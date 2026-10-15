@@ -1,115 +1,130 @@
 # Verdex
 
-> **Adaptive allocation of perishable agricultural inventory under acute supply-chain disruption.**
+**Perishable supply chain optimizer — adaptive re-routing under real-world disruptions.**
 
-[![GitHub Repo](https://img.shields.io/badge/GitHub-Abhinav--kp--dev%2Fverdex-blue.svg)](https://github.com/Abhinav-kp-dev/verdex)
-
----
-
-## Stack
-
-| Layer | Technology |
-| :--- | :--- |
-| Frontend | Next.js 14 (App Router), React, Tailwind CSS |
-| Backend | FastAPI (Python 3.10+) |
-| Optimization | SciPy HiGHS LP solver |
-| State management | Zustand |
-| Charts | Plotly.js (react-plotly.js) |
-| Styling | CSS custom properties, dark / light mode |
+[![GitHub](https://img.shields.io/badge/GitHub-Abhinav--kp--dev%2Fverdex-0d1117?style=flat&logo=github)](https://github.com/Abhinav-kp-dev/verdex)
+![Next.js](https://img.shields.io/badge/Next.js-14-black?style=flat&logo=nextdotjs)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.110-009688?style=flat&logo=fastapi)
+![Python](https://img.shields.io/badge/Python-3.10+-3776ab?style=flat&logo=python)
 
 ---
 
-## Running locally
+## The Problem
 
-### 1. Backend
+The global food system loses **14–21% of perishable produce** before it ever reaches a retail shelf (FAO, 2019). Most of this waste does not happen at the farm or the market — it happens in transit, because supply chain plans are written once and never updated.
 
-```bash
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements-backend.txt
-uvicorn backend.main:app --port 8000 --reload
-```
+A static distribution plan looks like this:
 
-API available at `http://localhost:8000`. Health check: `GET /health`.
+> *"Farm F2 sends 2,000 kg of tomatoes to Storage S1 via Truck T3, which delivers to Market M2 by Thursday."*
 
-### 2. Frontend
+That plan works under ideal conditions. But supply chains are not ideal. Trucks break down. Cold storage units lose power. Roads close after floods. Regional heatwaves compress shelf lives by 30% overnight. When any of these events hits, the static plan becomes useless — and produce that was hours away from delivery starts rotting on the side of a blocked road.
 
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-App available at `http://localhost:3000`.
+The industry response to disruptions is manual: dispatchers make phone calls, reroute trucks by instinct, and absorb the losses. For a regional distributor handling 50+ batches across dozens of routes, this process takes hours. Produce does not have hours.
 
 ---
 
-## 1. Executive Summary & Problem Statement
+## The Idea
 
-Perishable food supply chains lose between **14% and 21% of produce** globally prior to reaching retail markets (FAO). Agricultural produce decays continuously as a function of transit time, thermal exposure, and handling delays. In conventional supply chain management, distribution plans are **static**: batches are pre-assigned to routes and cold storage facilities hours or days in advance.
+Treat supply chain re-routing as a **mathematical optimization problem that can be solved in milliseconds**.
 
-When an acute disruption strikes — such as a refrigerated truck breakdown, cold-storage power outage, roadway closure, or regional heatwave — these static plans fail catastrophically:
-1. Aging produce is trapped along severed or congested corridors.
-2. Produce arrives at retail markets with zero remaining shelf life, turning into total waste.
-3. Downstream urban retail centers suffer acute demand deficits while produce rots at farm gates.
+Every batch of perishable produce has a shelf life. Every route has a travel time and a thermal profile. Every storage facility has a capacity. Every market has a demand. These are not soft preferences — they are hard constraints that can be encoded precisely into a linear program.
 
-**Verdex** is an adaptive computational intelligence optimization system that continuously monitors network health, tracks biophysical spoilage kinetics, and dynamically re-allocates perishable inventory upon disruption detection to minimize avoidable spoilage, maximize demand fulfillment, and maintain transportation cost efficiency.
+When a disruption occurs, the system does not start over. It:
+1. **Freezes** allocations that are already in motion and still viable.
+2. **Ages** the remaining inventory by the disruption duration.
+3. **Solves a residual LP** for the stranded batches only — finding new routes that respect remaining shelf lives, available capacity, and market demand.
+
+The result is a globally optimal re-allocation in under 10 milliseconds, delivered through a live dashboard that shows exactly what changed, what was saved, and what was lost.
+
+---
+
+## Solution Overview
 
 ```
-NORMAL OPERATION                ACUTE DISRUPTION                     DYNAMIC RECOVERY
-┌────────────────────┐         ┌────────────────────┐              ┌────────────────────┐
-│ Multi-Objective    │   ──►   │ Detect Asset Shock │   ──►        │ State Preservation │
-│ Initial Allocation │         │ (Truck/Storage/Heat)              │ & Fast Re-Routing  │
-└────────────────────┘         └────────────────────┘              └────────────────────┘
+┌─────────────────────────────────────────────────────────────────────┐
+│                        Verdex Platform                              │
+│                                                                     │
+│  ┌──────────────┐    ┌──────────────┐    ┌──────────────────────┐  │
+│  │   Dashboard  │    │ Plan & Tune  │    │  Simulate & Recover  │  │
+│  │              │    │              │    │                      │  │
+│  │ Live network │    │ Run the LP   │    │ Inject disruption →  │  │
+│  │ overview     │    │ Tune λ       │    │ dynamic re-optimize  │  │
+│  │ Batch status │    │ weights      │    │ in < 10 ms           │  │
+│  └──────────────┘    └──────────────┘    └──────────────────────┘  │
+│                                                                     │
+│  Frontend: Next.js 14 · Tailwind CSS · Plotly.js · Zustand         │
+│  Backend:  FastAPI · SciPy HiGHS LP solver · Pydantic v2           │
+└─────────────────────────────────────────────────────────────────────┘
 ```
 
----
+The workflow follows four stages:
 
-## 2. Key Contributions & Core Differentiator
-
-Unlike commercial dashboards that merely visualize inventory or generic ML systems that attempt to "predict food waste" after the fact, **Verdex is an active decision-making and optimization engine**:
-
-- **Perishability-Aware Routing**: Direct integration of Arrhenius-based continuous thermal degradation and shelf-life exhaustion into network flow constraints.
-- **Stateful Dynamic Re-Optimization**: When network assets fail, the system **does not** restart from scratch. It preserves valid in-flight shipments, ages remaining produce by the disruption duration, and solves a residual linear program for stranded batches in **sub-10 milliseconds**.
-- **Rigorous Multi-Objective Formulation**: Transparent trade-off optimization between spoilage minimization ($\lambda_1$), transportation cost ($\lambda_2$), demand fulfillment ($\lambda_3$), and network disruption risk ($\lambda_4$).
-- **Zero Fabrication Policy**: All benchmarks, runtime scaling curves, and comparison figures are evaluated on actual execution instances with fixed reproducible random seeds.
+| Stage | Page | What happens |
+| :---: | :--- | :--- |
+| 1 | **Dashboard** | Load the supply network. Inspect farms, storage hubs, markets, and batch statuses. |
+| 2 | **Plan Delivery** | Run the multi-objective optimizer. Tune spoilage, cost, unmet demand, and risk weights. Review the Sankey allocation chart. |
+| 3 | **Simulate Disruption** | Inject a truck breakdown, cold storage failure, demand shock, heatwave, or road closure. See which nodes go offline. |
+| 4 | **Re-Optimize** | Run the stateful re-optimizer. Stranded batches are rerouted; in-flight valid shipments are preserved. |
 
 ---
 
-## 3. System Architecture
+## Key Differentiators
+
+**vs. static allocation dashboards**
+Most supply chain tools visualize what happened. Verdex computes what should happen next, in real time, under the current network state.
+
+**vs. greedy heuristics**
+Nearest-market and cheapest-route approaches optimize one variable in isolation. Verdex balances spoilage, cost, unmet demand, and route risk simultaneously through a single exact LP.
+
+**vs. re-running the full optimizer from scratch**
+A full restart after a disruption ignores in-flight shipments that are still viable, wastes solver time on already-settled allocations, and produces plans that contradict reality. Verdex's stateful re-optimizer only acts on what is actually stranded.
+
+**Zero fabrication policy**
+Every benchmark figure in this repository is produced by running `python -m src.experiments --scenarios 100` with fixed seeds. No numbers were written by hand.
+
+---
+
+## System Architecture
 
 ```
                   ┌──────────────────────────────────────────────┐
                   │          Supply-Chain Data Layer             │
                   │  Farms | Storage Hubs | Markets | Batches    │
                   └──────────────────────┬───────────────────────┘
+                                         │
                                          ▼
                   ┌──────────────────────────────────────────────┐
                   │    Biophysical Spoilage Kinetics Engine      │
                   │ Arrhenius Thermal Acceleration & Decay Power │
                   └──────────────────────┬───────────────────────┘
-                                         ▼
-        ┌────────────────────────────────┴───────────────────────────────┐
-        ▼                                ▼                               ▼
-┌──────────────────┐           ┌──────────────────┐           ┌──────────────────────┐
-│ Nearest Market   │           │ Cheapest Route   │           │ Proposed Verdex      │
-│ Baseline (Greedy)│           │ Baseline (LP)    │           │ Multi-Objective MIP  │
-└──────────────────┘           └──────────────────┘           └──────────┬───────────┘
-                                                                         ▼
-                                                              ┌──────────────────────┐
-                                                              │  Disruption Engine   │
-                                                              │ Truck/Storage/Heat   │
-                                                              └──────────┬───────────┘
-                                                                         ▼
-                                                              ┌──────────────────────┐
-                                                              │ Dynamic Reoptimizer  │
-                                                              │ Residual Flow Reroute│
-                                                              └──────────┬───────────┘
-                                                                         ▼
-                                                              ┌──────────────────────┐
-                                                              │  Next.js Dashboard   │
-                                                              │  FastAPI + Plotly.js │
-                                                              └──────────────────────┘
+                                         │
+              ┌──────────────────────────┼──────────────────────────┐
+              ▼                          ▼                           ▼
+   ┌──────────────────┐       ┌──────────────────┐       ┌─────────────────────┐
+   │ Nearest Market   │       │ Cheapest Route   │       │    Verdex DPSRO     │
+   │ Baseline (Greedy)│       │ Baseline (LP)    │       │ Multi-Objective MIP │
+   └──────────────────┘       └──────────────────┘       └──────────┬──────────┘
+                                                                     │
+                                                                     ▼
+                                                          ┌──────────────────────┐
+                                                          │  Disruption Engine   │
+                                                          │ Truck / Storage /    │
+                                                          │ Heatwave / Road /    │
+                                                          │ Demand Shock         │
+                                                          └──────────┬───────────┘
+                                                                     │
+                                                                     ▼
+                                                          ┌──────────────────────┐
+                                                          │  Dynamic Reoptimizer │
+                                                          │  Stateful Residual   │
+                                                          │  Flow Re-routing     │
+                                                          └──────────┬───────────┘
+                                                                     │
+                                                                     ▼
+                                                          ┌──────────────────────┐
+                                                          │   Next.js Dashboard  │
+                                                          │   FastAPI · Plotly   │
+                                                          └──────────────────────┘
 ```
 
 ### Project structure
@@ -117,134 +132,137 @@ Unlike commercial dashboards that merely visualize inventory or generic ML syste
 ```
 verdex/
 ├── backend/
-│   ├── main.py            # FastAPI app, CORS, router mounts
-│   ├── schemas.py         # Pydantic v2 request/response models
+│   ├── main.py              # FastAPI app, CORS, router mounts
+│   ├── schemas.py           # Pydantic v2 I/O schemas
 │   └── routers/
-│       ├── state.py       # GET  /api/state
-│       ├── optimize.py    # POST /api/optimize/
-│       ├── simulate.py    # POST /api/simulate/
-│       ├── reoptimize.py  # POST /api/reoptimize/
-│       ├── reports.py     # GET  /api/reports/
-│       └── data.py        # GET  /api/data/
+│       ├── state.py         # GET  /api/state
+│       ├── optimize.py      # POST /api/optimize/
+│       ├── simulate.py      # POST /api/simulate/
+│       ├── reoptimize.py    # POST /api/reoptimize/
+│       ├── reports.py       # GET  /api/reports/
+│       └── data.py          # GET  /api/data/
+│
 ├── frontend/
-│   ├── app/               # Next.js App Router pages
-│   │   ├── dashboard/     # Live network overview
-│   │   ├── plan/          # Run optimizer, tune lambda weights
-│   │   ├── simulate/      # Inject disruptions
-│   │   ├── reoptimize/    # Dynamic re-routing after disruption
-│   │   ├── results/       # Reports and Sankey charts
-│   │   └── research/      # Experiments and ablation
+│   ├── app/                 # Next.js 14 App Router
+│   │   ├── dashboard/       # Live network overview
+│   │   ├── plan/            # Optimizer + lambda weight tuning
+│   │   ├── simulate/        # Disruption injection
+│   │   ├── reoptimize/      # Stateful recovery
+│   │   ├── results/         # Reports and Sankey charts
+│   │   └── research/        # Experiments and ablation
 │   ├── components/
-│   │   ├── layout/        # AppShell (sidebar + theme toggle), StepProgress
-│   │   └── ui/            # MetricCard, PageHeader, StatusBadge
+│   │   ├── layout/          # AppShell, StepProgress
+│   │   └── ui/              # MetricCard, PageHeader, StatusBadge
 │   └── lib/
-│       ├── api.ts          # Typed fetch wrappers for all endpoints
-│       ├── store.ts        # Zustand global state
-│       └── types.ts        # Shared TypeScript types
-└── src/                   # Core Python optimization engine
-    ├── optimizer.py        # Multi-objective LP (SciPy HiGHS)
-    ├── dynamic_optimizer.py
-    ├── disruption.py
-    ├── spoilage_model.py
-    ├── models.py
+│       ├── api.ts            # Typed fetch wrappers
+│       ├── store.ts          # Zustand global state
+│       └── types.ts          # Shared TypeScript types
+│
+└── src/                     # Core Python optimization engine
+    ├── optimizer.py          # Multi-objective LP (SciPy HiGHS)
+    ├── dynamic_optimizer.py  # Stateful re-optimizer
+    ├── disruption.py         # Disruption event handlers
+    ├── spoilage_model.py     # Arrhenius kinetics
+    ├── models.py             # Domain dataclasses
+    ├── simulation.py
+    ├── experiments.py
     └── ...
 ```
 
 ---
 
-## 4. Mathematical Formulation
+## Mathematical Formulation
 
-### Objective Function
+### Objective function
 
 Minimize total supply-chain penalty $J$:
 
-$$\min_{x \ge 0, u \ge 0} J = \lambda_{\text{spoilage}} \sum_{p \in \mathcal{P}} s_p x_p + \lambda_{\text{cost}} \sum_{p \in \mathcal{P}} c_p x_p + \lambda_{\text{unmet}} \sum_{m \in \mathcal{M}} \pi_m u_m + \lambda_{\text{risk}} \sum_{p \in \mathcal{P}} r_p x_p$$
+$$\min_{x \ge 0,\; u \ge 0} \; J = \lambda_{\text{spoilage}} \sum_{p \in \mathcal{P}} s_p x_p \;+\; \lambda_{\text{cost}} \sum_{p \in \mathcal{P}} c_p x_p \;+\; \lambda_{\text{unmet}} \sum_{m \in \mathcal{M}} \pi_m u_m \;+\; \lambda_{\text{risk}} \sum_{p \in \mathcal{P}} r_p x_p$$
 
-Where:
-- $x_p$: Dispatch quantity (kg) routed along feasible path $p = (b, \text{farm}, \text{storage}, \text{market})$
-- $u_m$: Unmet demand slack variable at market $m$
-- $s_p \in [0, 1]$: Spoilage fraction estimated by kinetic model
-- $c_p$: Transportation cost per unit mass (\$/kg)
-- $r_p \in [0, 1]$: Composite corridor and thermal risk factor
-- $\pi_m$: Priority weight of market $m$
-- $\lambda_1, \lambda_2, \lambda_3, \lambda_4$: Configurable penalty weights (tunable in the Plan page)
+| Symbol | Meaning |
+| :--- | :--- |
+| $x_p$ | Dispatch quantity (kg) along path $p = (\text{batch},\; \text{farm} \to \text{storage} \to \text{market})$ |
+| $u_m$ | Unmet demand slack at market $m$ |
+| $s_p \in [0,1]$ | Spoilage fraction (Arrhenius kinetics) |
+| $c_p$ | Transport cost per kg (\$/kg) |
+| $r_p \in [0,1]$ | Composite corridor and thermal risk |
+| $\pi_m$ | Market priority weight |
+| $\lambda_{1..4}$ | User-configurable penalty weights |
 
 ### Constraints
 
-1. **Batch Supply Bound**: Total dispatched quantity across all paths for batch $b$ cannot exceed available harvest mass:
-   $$\sum_{p \in \mathcal{P}(b)} x_p \le Q_b \quad \forall b \in \mathcal{B}$$
+**1. Batch supply bound** — cannot ship more than available harvest:
+$$\sum_{p \in \mathcal{P}(b)} x_p \;\le\; Q_b \qquad \forall b \in \mathcal{B}$$
 
-2. **Storage Hub Capacity**: Total volume routed through intermediate cold-storage hub $s$ cannot exceed its operational capacity:
-   $$\sum_{p \text{ via } s} x_p \le C_s \cdot \mathbb{I}[s \text{ available}] \quad \forall s \in \mathcal{S}$$
+**2. Storage capacity** — volume through hub $s$ cannot exceed operational capacity:
+$$\sum_{p \;\text{via}\; s} x_p \;\le\; C_s \cdot \mathbb{I}[s\text{ available}] \qquad \forall s \in \mathcal{S}$$
 
-3. **Usable Demand Fulfillment**: Usable fresh produce delivered to market $m$ plus unmet demand slack $u_m$ equals demand $D_m$:
-   $$\sum_{p \to m} (1 - s_p) x_p + u_m = D_m \quad \forall m \in \mathcal{M}$$
+**3. Demand fulfillment** — usable fresh produce plus slack equals market demand:
+$$\sum_{p \to m} (1 - s_p)\, x_p \;+\; u_m = D_m \qquad \forall m \in \mathcal{M}$$
 
-4. **Perishability Cutoff**: If total transit time along path $p$ exceeds the batch's remaining shelf life, routing is strictly prohibited:
-   $$x_p = 0 \quad \text{if } t_p > \text{remaining\_shelf\_life}_b$$
+**4. Perishability cutoff** — routing is prohibited if transit time exceeds remaining shelf life:
+$$x_p = 0 \qquad \text{if } t_p > \text{shelf\_life}_b$$
 
-5. **Non-Negativity**: $x_p \ge 0, \quad u_m \ge 0$
+**5. Non-negativity:**
+$$x_p \ge 0, \quad u_m \ge 0$$
+
+### Spoilage kinetics
+
+Spoilage fraction $s_p$ is derived from Arrhenius thermal acceleration:
+
+$$\Delta T_{\text{excess}} = \max\!\left(0,\; \frac{T_{\text{ambient}} - T_{\text{ref}}}{T_{\text{ref}}}\right)$$
+
+$$\text{Effective transit} = t_{\text{transit}} \cdot (1 + \beta \cdot \Delta T_{\text{excess}})$$
+
+$$s_p = \begin{cases} 1.0 & \text{if effective transit} \ge \text{shelf\_life}_b \\[4pt] \left(\dfrac{\text{effective transit}}{\text{shelf\_life}_b}\right)^{1.8} & \text{otherwise} \end{cases}$$
+
+Route risk uses a centered logit sigmoid:
+
+$$\text{Risk}_p = \frac{1}{1 + \exp\!\left(-\!\left[\alpha\!\left(\frac{t_p}{\text{shelf\_life}_b} - 0.7\right) + \beta\,\Delta T_{\text{excess}} + \gamma\,\Delta t_{\text{delay}}\right]\right)}$$
 
 ---
 
-## 5. Biophysical Spoilage Kinetics Model
+## Benchmark Results
 
-Spoilage fraction $s(b, p)$ is calculated dynamically:
+All figures are produced by `python -m src.experiments --scenarios 100` across seeds 1000–1100. No results are manually authored.
 
-$$\Delta T_{\text{excess}} = \max\left(0, \frac{T_{\text{ambient}} - T_{\text{ref}}}{T_{\text{ref}}}\right)$$
+### Post-disruption comparison (100 Monte Carlo scenarios)
 
-$$\text{Effective Elapsed Transit} = t_{\text{transit}} \cdot (1 + \beta \cdot \Delta T_{\text{excess}})$$
+| Method | Spoilage % (mean ± std) | Spoilage (kg) | Demand fulfilled | Freight cost | Recovery time |
+| :--- | :---: | :---: | :---: | :---: | :---: |
+| Nearest market (greedy) | 13.82% ± 3.41% | 2,840 kg | 86.18% | $4,812 | 0.3 ms |
+| Cheapest route (LP) | 4.65% ± 1.82% | 1,024 kg | 95.35% | $3,618 | 7.8 ms |
+| **Verdex DPSRO** | **1.84% ± 0.62%** | **413 kg** | **98.16%** | $3,892 | **5.1 ms** |
 
-$$s_p = \begin{cases} 1.0 & \text{if Effective Elapsed Transit} \ge \text{shelf\_life}_b \\ \left(\dfrac{\text{Effective Elapsed Transit}}{\text{shelf\_life}_b}\right)^{1.8} & \text{otherwise} \end{cases}$$
+**85.5% less spoilage** than greedy. **60.3% less** than cheapest-route. Only **7.5% higher freight cost** to eliminate 610 kg of avoidable waste per scenario.
 
-Risk score $\sigma$ is evaluated via centered logit sigmoid:
+### Scalability (problem size vs. HiGHS solver time)
 
-$$\text{Risk}_p = \frac{1}{1 + \exp\left(-\left[\alpha \left(\frac{t_p}{\text{shelf\_life}_b} - 0.7\right) + \beta \Delta T_{\text{excess}} + \gamma \Delta t_{\text{delay}}\right]\right)}$$
-
----
-
-## 6. Verified Experimental Results (100 Scenarios)
-
-The following metrics are derived directly from executing `python -m src.experiments --scenarios 100` across seeds 1000–1100:
-
-### Post-Disruption Benchmark Comparison (Mean across 100 Monte Carlo Runs)
-
-| Optimization Method | Spoilage % (Mean ± Std) | Spoilage (kg) | Demand Fulfillment % | Transport Cost ($) | Recovery Time | Feasibility Rate |
-| :--- | :---: | :---: | :---: | :---: | :---: | :---: |
-| **Nearest Market Baseline** | 13.82% ± 3.41% | 2,840.4 kg | 86.18% | $4,812.30 | 0.0003 s | 100% |
-| **Cheapest Route Baseline** | 4.65% ± 1.82% | 1,024.1 kg | 95.35% | $3,618.40 | 0.0078 s | 100% |
-| **Verdex DPSRO (Re-Opt)** | **1.84% ± 0.62%** | **412.8 kg** | **98.16%** | $3,892.15 | **0.0051 s** | **100%** |
-
-**Key findings:**
-- **85.5% less spoilage** relative to Nearest-Market; **60.3% less** relative to Cheapest-Route.
-- Verdex consistently fulfills **98.16%** of market demand even under acute infrastructure failures.
-- Only **7.5% higher freight cost** than the naive cost-minimizing baseline to eliminate over **610 kg of food waste per scenario**.
-
-### Scalability Analysis (Problem Size vs HiGHS Solver Runtime)
-
-| Perishable Batches | Active Paths | Verdex DPSRO Runtime | Cheapest Route LP | Nearest Market Greedy |
+| Batches | Decision variables | Verdex | Cheapest route LP | Greedy |
 | :---: | :---: | :---: | :---: | :---: |
-| **10 batches** | 50 paths | **0.0051 s** | 0.0062 s | 0.0002 s |
-| **25 batches** | 125 paths | **0.0098 s** | 0.0054 s | 0.0004 s |
-| **50 batches** | 250 paths | **0.0139 s** | 0.0095 s | 0.0007 s |
-| **100 batches** | 700 paths | **0.0295 s** | 0.0249 s | 0.0020 s |
-| **250 batches** | 3,500 paths | **0.6987 s** | 0.4527 s | 0.0757 s |
-| **500 batches** | 9,000 paths | **1.6235 s** | 1.3522 s | 0.5411 s |
+| 10 | ~50 | 5.1 ms | 6.2 ms | 0.2 ms |
+| 25 | ~125 | 9.8 ms | 5.4 ms | 0.4 ms |
+| 50 | ~250 | 13.9 ms | 9.5 ms | 0.7 ms |
+| 100 | ~700 | 29.5 ms | 24.9 ms | 2.0 ms |
+| 250 | ~3,500 | 698.7 ms | 452.7 ms | 75.7 ms |
+| 500 | ~9,000 | 1,623.5 ms | 1,352.2 ms | 541.1 ms |
 
-*Even at large regional scales (500 batches, ~9,000 decision variables), the exact MIP/LP formulation solves in under 1.7 seconds.*
+At 500 batches and ~9,000 decision variables, the exact LP solves in under 1.7 seconds.
 
-### Ablation Study (Component Attribution)
+### Ablation (component contribution)
 
-| Model Variant | Spoilage % | Demand Fulfillment % | Freight Cost ($) | Recovery Time (s) |
+| Model variant | Spoilage % | Demand fulfilled | Freight cost | Recovery time |
 | :--- | :---: | :---: | :---: | :---: |
-| **Full Verdex Model** | **4.88%** | **88.64%** | **$7,295.41** | **0.0054 s** |
-| Without Disruption Risk ($\lambda_{\text{risk}}=0$) | 4.87% | 88.65% | $7,309.48 | 0.0052 s |
-| Static Restart (No State Preservation) | 3.34% | 100.00% | $7,984.12 | 0.0128 s |
-| Cost-Only ($\lambda_{\text{spoil}}=0, \lambda_{\text{risk}}=0$) | 11.07% | 89.62% | $7,943.46 | 0.0048 s |
+| **Full Verdex** | **4.88%** | **88.64%** | **$7,295** | **5.4 ms** |
+| No risk term ($\lambda_{\text{risk}}=0$) | 4.87% | 88.65% | $7,309 | 5.2 ms |
+| Static restart (no state preservation) | 3.34% | 100.00% | $7,984 | 12.8 ms |
+| Cost-only ($\lambda_{\text{spoil}}=\lambda_{\text{risk}}=0$) | 11.07% | 89.62% | $7,943 | 4.8 ms |
+
+Removing spoilage from the objective spikes waste to 11.07%. Static restart achieves full demand fulfillment but at 2.4× the solver time and 9% higher freight cost due to unnecessary re-dispatch.
 
 ---
 
-## 7. Installation & Quickstart
+## Installation
 
 ### Prerequisites
 - Python 3.10+
@@ -253,7 +271,6 @@ The following metrics are derived directly from executing `python -m src.experim
 ### Backend
 
 ```bash
-cd perishable-supply-optimizer
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements-backend.txt
@@ -268,14 +285,16 @@ npm install
 npm run dev
 ```
 
-### Run test suite
+Open `http://localhost:3000`.
+
+### Run tests
 
 ```bash
 pytest tests/ -v
-# 73 passed in ~3.3s
+# 73 passed in ~3.3 s  (unit, constraints, disruptions, performance, validation, security)
 ```
 
-### Run 100-scenario experiments
+### Run experiments
 
 ```bash
 python -m src.experiments --scenarios 100
@@ -283,24 +302,27 @@ python -m src.experiments --scenarios 100
 
 ---
 
-## 8. Technical FAQ
+## Technical FAQ
 
-**Q: Why is this better than Dijkstra or shortest path?**
-Dijkstra optimizes distance in isolation. It ignores batch shelf life, cold storage thermal protection, facility holding capacity, and downstream market capacity. Verdex solves a global multi-commodity network flow balancing all constraints simultaneously.
+**Why not Dijkstra or shortest path?**
+Dijkstra minimizes a single scalar (distance) and ignores batch-level shelf lives, thermal protection, storage capacity, and downstream demand. Verdex solves a constrained multi-commodity network flow where all variables are coupled.
 
-**Q: Why not just minimize freight cost?**
-As proven in the ablation study, minimizing freight cost alone spikes spoilage to 11.07% because cheap routes often lack refrigeration or involve longer delays that exhaust shelf life.
+**Why not pure cost minimization?**
+The ablation confirms it: removing the spoilage term pushes waste to 11.07% because low-cost routes are often slower or lack refrigeration, consuming shelf life before delivery.
 
-**Q: What solver is used?**
-An exact Linear Program solved using the state-of-the-art C++ **HiGHS** simplex/interior-point solver integrated natively in SciPy (`scipy.optimize.linprog(method='highs')`). Zero external binary dependencies; guarantees global optimality.
+**What solver is used?**
+The **HiGHS** simplex / interior-point solver via `scipy.optimize.linprog(method='highs')`. It is an exact LP solver with no external binary dependencies and guaranteed global optimality.
 
-**Q: What data is real vs simulated?**
-Network layouts are generated with reproducible seeds; perishability kinetics and shelf-life horizons are calibrated to USDA Handbook No. 66 and FAO post-harvest agricultural benchmarks.
+**Is the data real?**
+Network topology and volumes are generated from reproducible seeds. Spoilage kinetics and shelf-life parameters are calibrated to USDA Handbook No. 66 and FAO post-harvest benchmarks.
 
 ---
 
-## 9. Known Limitations & Future Work
+## Known Limitations & Future Work
 
-- **Deterministic travel times**: Currently assumes fixed average transit velocities. Future work will incorporate stochastic travel time probability distributions.
-- **Telemetry integration**: Production deployment would ingest real-time MQTT streams from telematics OBD-II devices and IoT cold-chain temperature loggers.
-- **Multi-period rolling horizon**: Expanding from discrete event-driven re-optimization to a rolling-horizon predictive model with dynamic harvesting forecasts.
+| Limitation | Planned work |
+| :--- | :--- |
+| Deterministic transit times | Stochastic travel time distributions |
+| Single-period optimization | Rolling-horizon predictive re-optimization |
+| Simulated network data | Live MQTT ingestion from IoT cold-chain loggers and OBD-II telematics |
+| Single depot per route | Multi-depot consolidation and cross-docking |
