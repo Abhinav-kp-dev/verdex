@@ -20,27 +20,19 @@ from src.disruption import (
 
 router = APIRouter()
 
-_DISRUPTION_MAP = {
-    "Truck Breaks Down": "truck",
-    "Cold Storage Loses Power": "storage",
-    "Demand Shock — Market Surge": "demand",
-    "Heatwave — Temperature Shock": "heatwave",
-    "Road Closure": "route",
-}
-
-
 def _build_disruption(disruption_type: str, target_id: str | None):
-    dtype = disruption_type.strip()
+    dtype = disruption_type.strip().lower()
 
-    if dtype == "Truck Breaks Down":
+    # Match both frontend value keys and legacy label strings
+    if dtype in ("truck_breakdown", "truck breaks down"):
         return TruckFailureDisruption(truck_id=target_id)
-    elif dtype == "Cold Storage Loses Power":
+    elif dtype in ("cold_storage_failure", "cold storage loses power"):
         return StorageOutageDisruption(storage_id=target_id)
-    elif dtype == "Demand Shock — Market Surge":
+    elif dtype in ("demand_shock", "demand shock — market surge"):
         return DemandShockDisruption(market_id=target_id, multiplier=2.5)
-    elif dtype == "Heatwave — Temperature Shock":
+    elif dtype in ("heatwave", "heatwave — temperature shock"):
         return TemperatureShockDisruption(delta_temp_c=12.0)
-    elif dtype == "Road Closure":
+    elif dtype in ("road_closure", "road closure"):
         return RouteClosureDisruption(route_id=target_id)
     else:
         # Fallback: truck failure

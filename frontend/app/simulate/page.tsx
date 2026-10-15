@@ -228,36 +228,173 @@ export default function SimulatePage() {
           </div>
 
           {/* Results after disruption */}
-          {disruptedState && (
+          {disruptedState && state && (
             <>
               <div className="border-t border-[var(--border)]" />
 
-              {/* Metric cards */}
+              {/* KPI Cards */}
               <div className="grid grid-cols-3 gap-4">
+                <MetricCard label="Disruption Type" value={selected.label} status="bad" />
                 <MetricCard
-                  label="Disruption Type"
-                  value={selected.label}
-                  status="bad"
-                />
-                <MetricCard
-                  label="Affected Nodes"
-                  value={
-                    (() => {
-                      // Count unavailable nodes/routes
-                      const unavailRoutes = Object.values(disruptedState.routes).filter((r) => !r.available).length
-                      const unavailStorage = Object.values(disruptedState.storage_facilities).filter((sf) => !sf.available).length
-                      const unavailTrucks = Object.values(disruptedState.trucks).filter((t) => !t.available).length
-                      return unavailRoutes + unavailStorage + unavailTrucks
-                    })()
-                  }
-                  unit="nodes / routes unavailable"
+                  label="Offline Routes"
+                  value={Object.values(disruptedState.routes).filter((r) => !r.available).length}
+                  unit={`of ${Object.values(disruptedState.routes).length} routes`}
                   status="warn"
                 />
                 <MetricCard
-                  label="Description"
-                  value={disruptionDesc.length > 40 ? disruptionDesc.slice(0, 40) + '...' : disruptionDesc || 'N/A'}
-                  unit={disruptionDesc.length > 40 ? disruptionDesc : undefined}
+                  label="Offline Assets"
+                  value={
+                    Object.values(disruptedState.trucks).filter((t) => !t.available).length +
+                    Object.values(disruptedState.storage_facilities).filter((s) => !s.available).length
+                  }
+                  unit="trucks + storage offline"
+                  status="warn"
                 />
+              </div>
+
+              {/* Scenario-specific impact panel */}
+              <div className="bg-[var(--surface)] border border-[var(--border)] rounded-md p-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: '#ef4444' }} />
+                  <div className="text-sm font-semibold text-[var(--text)]">{disruptionDesc}</div>
+                </div>
+
+                {/* Truck breakdown: show which trucks and routes are now offline */}
+                {disruptionType === 'truck_breakdown' && (
+                  <div className="grid grid-cols-2 gap-4 pt-1">
+                    <div>
+                      <div className="text-[10px] uppercase tracking-wider text-[var(--text-3)] mb-1.5">Offline Trucks</div>
+                      {Object.values(disruptedState.trucks).filter(t => !t.available).length === 0 ? (
+                        <div className="text-xs text-[var(--text-3)]">None</div>
+                      ) : (
+                        Object.values(disruptedState.trucks).filter(t => !t.available).map(t => (
+                          <div key={t.truck_id} className="text-xs font-mono text-red-400 mb-1">
+                            {t.truck_id} — was at {t.current_location}
+                          </div>
+                        ))
+                      )}
+                    </div>
+                    <div>
+                      <div className="text-[10px] uppercase tracking-wider text-[var(--text-3)] mb-1.5">Blocked Routes</div>
+                      {Object.values(disruptedState.routes).filter(r => !r.available).map(r => (
+                        <div key={r.route_id} className="text-xs font-mono text-red-400 mb-1">
+                          {r.route_id}: {r.source} → {r.destination}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Cold storage: show offline facility and all closed routes */}
+                {disruptionType === 'cold_storage_failure' && (
+                  <div className="grid grid-cols-2 gap-4 pt-1">
+                    <div>
+                      <div className="text-[10px] uppercase tracking-wider text-[var(--text-3)] mb-1.5">Offline Storage</div>
+                      {Object.values(disruptedState.storage_facilities).filter(s => !s.available).map(s => (
+                        <div key={s.storage_id} className="text-xs font-mono text-red-400 mb-1">
+                          {s.storage_id} — capacity {s.capacity.toLocaleString()} kg now unavailable
+                        </div>
+                      ))}
+                    </div>
+                    <div>
+                      <div className="text-[10px] uppercase tracking-wider text-[var(--text-3)] mb-1.5">Closed Routes</div>
+                      {Object.values(disruptedState.routes).filter(r => !r.available).map(r => (
+                        <div key={r.route_id} className="text-xs font-mono text-red-400 mb-1">
+                          {r.route_id}: {r.source} → {r.destination}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Demand shock: compare demand before vs after */}
+                {disruptionType === 'demand_shock' && (
+                  <div className="pt-1">
+                    <div className="text-[10px] uppercase tracking-wider text-[var(--text-3)] mb-2">Demand Surge (×2.5)</div>
+                    <div className="grid grid-cols-3 gap-3">
+                      {Object.values(disruptedState.markets).map(m => {
+                        const original = state.markets[m.market_id]
+                        const changed = original && m.demand !== original.demand
+                        return (
+                          <div key={m.market_id} className="p-2 rounded" style={{ background: 'var(--surface-2)', border: `1px solid ${changed ? '#ef4444' : 'var(--border)'}` }}>
+                            <div className="text-[10px] font-mono text-[var(--text-3)]">{m.market_id}</div>
+                            {changed ? (
+                              <>
+                                <div className="text-xs line-through text-[var(--text-3)]">{original.demand.toLocaleString()} kg</div>
+                                <div className="text-sm font-bold text-red-400">{m.demand.toLocaleString()} kg</div>
+                              </>
+                            ) : (
+                              <div className="text-sm font-bold text-[var(--text)]">{m.demand.toLocaleString()} kg</div>
+                            )}
+                            <div className="text-[10px] text-[var(--text-3)]">priority {m.priority}×</div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Heatwave: show batch temperature increases */}
+                {disruptionType === 'heatwave' && (
+                  <div className="pt-1">
+                    <div className="text-[10px] uppercase tracking-wider text-[var(--text-3)] mb-2">Temperature Impact (+12°C)</div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <div className="text-[10px] text-[var(--text-3)] mb-1.5">Batch temperatures raised</div>
+                        {Object.values(disruptedState.batches).slice(0, 6).map(b => {
+                          const orig = state.batches[b.batch_id]
+                          return (
+                            <div key={b.batch_id} className="flex justify-between text-xs mb-1">
+                              <span className="font-mono text-[var(--text-2)]">{b.batch_id}</span>
+                              <span className="text-[var(--text-3)]">{orig?.temperature ?? '?'}°C</span>
+                              <span style={{ color: '#ef4444' }}>→ {b.temperature}°C</span>
+                            </div>
+                          )
+                        })}
+                      </div>
+                      <div>
+                        <div className="text-[10px] text-[var(--text-3)] mb-1.5">Route risk factors elevated</div>
+                        {Object.values(disruptedState.routes).slice(0, 6).map(r => {
+                          const orig = state.routes[r.route_id]
+                          return (
+                            <div key={r.route_id} className="flex justify-between text-xs mb-1">
+                              <span className="font-mono text-[var(--text-2)]">{r.route_id}</span>
+                              <span className="text-[var(--text-3)]">{((orig?.risk_factor ?? 0) * 100).toFixed(0)}%</span>
+                              <span style={{ color: '#f59e0b' }}>→ {(r.risk_factor * 100).toFixed(0)}%</span>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Road closure: show closed route details */}
+                {disruptionType === 'road_closure' && (
+                  <div className="pt-1">
+                    <div className="text-[10px] uppercase tracking-wider text-[var(--text-3)] mb-2">Closed Routes</div>
+                    {Object.values(disruptedState.routes).filter(r => !r.available).map(r => {
+                      const orig = state.routes[r.route_id]
+                      return (
+                        <div key={r.route_id} className="p-2 rounded mb-2" style={{ background: 'var(--surface-2)', border: '1px solid #ef4444' }}>
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-xs font-mono font-bold text-red-400">{r.route_id}</span>
+                            <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: '#ef444422', color: '#ef4444' }}>CLOSED</span>
+                          </div>
+                          <div className="text-xs text-[var(--text-2)]">
+                            {r.source} → {r.destination} · {r.distance_km} km · {orig?.travel_time_hours.toFixed(1)}h transit
+                          </div>
+                          <div className="text-[11px] text-[var(--text-3)] mt-0.5">
+                            CO₂ {r.co2_kg_per_km} kg/km · Risk was {((orig?.risk_factor ?? 0) * 100).toFixed(0)}%
+                          </div>
+                        </div>
+                      )
+                    })}
+                    {Object.values(disruptedState.routes).filter(r => !r.available).length === 0 && (
+                      <div className="text-xs text-[var(--text-3)]">No routes closed (select a route target first).</div>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Disrupted Network Map */}
@@ -268,7 +405,7 @@ export default function SimulatePage() {
                 <div className="border border-[var(--border)] rounded-md overflow-hidden">
                   <NetworkMap state={disruptedState} height="380px" />
                 </div>
-                <div className="flex gap-4 text-[10px] text-[var(--text-3)]">
+                <div className="flex gap-4 flex-wrap text-[10px] text-[var(--text-3)]">
                   <span><span className="inline-block w-2 h-2 rounded-full bg-green-400 mr-1" />Farm</span>
                   <span><span className="inline-block w-2 h-2 rounded-full bg-blue-400 mr-1" />Storage (active)</span>
                   <span><span className="inline-block w-2 h-2 rounded-full bg-red-500 mr-1" />Storage (offline)</span>
@@ -291,7 +428,7 @@ export default function SimulatePage() {
                   href="/reoptimize"
                   className="shrink-0 inline-flex items-center h-8 px-3 text-sm font-semibold bg-[var(--accent)] text-black rounded hover:bg-[var(--accent-dim)] transition-colors duration-150"
                 >
-                  Re-Optimize
+                  Re-Optimize →
                 </Link>
               </div>
             </>
