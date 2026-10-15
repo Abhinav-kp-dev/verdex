@@ -23,25 +23,178 @@
 
 /* ── Light mode ── */
 [data-theme="light"] {
-  --bg: #f4fbf5;
+  --bg: #f5faf6;
   --surface: #ffffff;
-  --surface-2: #edf7ef;
-  --border: #cce5d4;
-  --border-2: #a8cfb5;
-  --text: #0d1f12;
-  --text-2: #3d6647;
-  --text-3: #7da888;
-  --accent: #16a34a;
-  --accent-dim: #15803d;
-  --red: #dc2626;
-  --amber: #d97706;
-  --blue: #2563eb;
+  --surface-2: #eaf3ec;
+  --border: #c6deca;
+  --border-2: #96bca0;
+  --text: #0a1c0d;
+  --text-2: #1a4d24;
+  --text-3: #3d6b47;
+  --accent: #15803d;
+  --accent-dim: #166534;
+  --red: #b91c1c;
+  --amber: #92400e;
+  --blue: #1d4ed8;
 }
 
 * { box-sizing: border-box; }
 body { background: var(--bg); color: var(--text); font-family: var(--font-geist-sans), sans-serif; transition: background 0.15s, color 0.15s; }
-::selection { background: rgba(34,197,94,0.2); }
+::selection { background: rgba(34,197,94,0.25); }
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: var(--bg); }
 ::-webkit-scrollbar-thumb { background: var(--border-2); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--text-3); }
+
+/* ── Light mode structural overrides ── */
+[data-theme="light"] aside {
+  background: #e8f2ea !important;
+  border-color: var(--border) !important;
+}
+
+[data-theme="light"] .border {
+  border-color: var(--border);
+}
+
+/* Cards get a subtle shadow instead of a glowing dark border */
+[data-theme="light"] .rounded-lg,
+[data-theme="light"] .rounded-xl {
+  box-shadow: 0 1px 4px rgba(0,0,0,0.07), 0 0 0 1px rgba(0,0,0,0.04);
+}
+
+/* Status / tier badges — invert dark glass to crisp light pills */
+[data-theme="light"] .bg-emerald-900\/60,
+[data-theme="light"] .bg-emerald-900\/40,
+[data-theme="light"] .bg-emerald-900\/50 {
+  background-color: #dcfce7 !important;
+}
+[data-theme="light"] .text-emerald-300,
+[data-theme="light"] .text-emerald-400 {
+  color: #15803d !important;
+}
+[data-theme="light"] .border-emerald-700,
+[data-theme="light"] .border-emerald-600 {
+  border-color: #86efac !important;
+}
+
+[data-theme="light"] .bg-amber-900\/60,
+[data-theme="light"] .bg-amber-900\/40,
+[data-theme="light"] .bg-amber-900\/50 {
+  background-color: #fef3c7 !important;
+}
+[data-theme="light"] .text-amber-300,
+[data-theme="light"] .text-amber-400 {
+  color: #92400e !important;
+}
+[data-theme="light"] .border-amber-700 {
+  border-color: #fcd34d !important;
+}
+
+[data-theme="light"] .bg-red-900\/60,
+[data-theme="light"] .bg-red-900\/40,
+[data-theme="light"] .bg-red-950\/40 {
+  background-color: #fee2e2 !important;
+}
+[data-theme="light"] .text-red-300,
+[data-theme="light"] .text-red-400 {
+  color: #b91c1c !important;
+}
+[data-theme="light"] .border-red-700,
+[data-theme="light"] .border-red-800 {
+  border-color: #fca5a5 !important;
+}
+
+[data-theme="light"] .bg-blue-900\/40,
+[data-theme="light"] .bg-blue-900\/20 {
+  background-color: #dbeafe !important;
+}
+[data-theme="light"] .text-blue-400,
+[data-theme="light"] .text-blue-300 {
+  color: #1d4ed8 !important;
+}
+[data-theme="light"] .border-blue-700 {
+  border-color: #93c5fd !important;
+}
+
+[data-theme="light"] .bg-purple-900\/40 {
+  background-color: #f3e8ff !important;
+}
+[data-theme="light"] .text-purple-400,
+[data-theme="light"] .text-purple-300 {
+  color: #7e22ce !important;
+}
+[data-theme="light"] .border-purple-700 {
+  border-color: #d8b4fe !important;
+}
+
+[data-theme="light"] .bg-cyan-900\/40 {
+  background-color: #cffafe !important;
+}
+[data-theme="light"] .text-cyan-300 {
+  color: #0e7490 !important;
+}
+[data-theme="light"] .border-cyan-700 {
+  border-color: #67e8f9 !important;
+}
+
+/* Green notification / sync banners */
+[data-theme="light"] .bg-emerald-950\/30,
+[data-theme="light"] .bg-emerald-900 {
+  background-color: #d1fae5 !important;
+}
+[data-theme="light"] .border-emerald-600,
+[data-theme="light"] .border-emerald-700 {
+  border-color: #6ee7b7 !important;
+}
+[data-theme="light"] .text-emerald-200 {
+  color: #065f46 !important;
+}
+
+/* Critical red banner */
+[data-theme="light"] .bg-red-950\/40 {
+  background-color: #fef2f2 !important;
+}
+
+/* Dark text on emerald buttons stays readable */
+[data-theme="light"] .bg-emerald-700 {
+  background-color: #15803d !important;
+}
+[data-theme="light"] .bg-emerald-700:hover,
+[data-theme="light"] .hover\:bg-emerald-600:hover {
+  background-color: #16a34a !important;
+}
+
+/* Input & select fields */
+[data-theme="light"] input,
+[data-theme="light"] select,
+[data-theme="light"] textarea {
+  background-color: #ffffff !important;
+  border-color: var(--border-2) !important;
+  color: var(--text) !important;
+}
+[data-theme="light"] input:focus,
+[data-theme="light"] select:focus {
+  border-color: #15803d !important;
+  box-shadow: 0 0 0 3px rgba(21,128,61,0.12) !important;
+}
+[data-theme="light"] input::placeholder {
+  color: #9ca3af !important;
+}
+
+/* Table header rows */
+[data-theme="light"] thead tr {
+  background-color: #f0f9f2 !important;
+}
+[data-theme="light"] th {
+  color: var(--text-2) !important;
+}
+
+/* Shelf-life progress bar track */
+[data-theme="light"] .bg-\[var\(--border\)\] {
+  background-color: #d1fae5;
+}
+
+/* Modal backdrop */
+[data-theme="light"] .bg-black\/60 {
+  background-color: rgba(0,0,0,0.35) !important;
+}
