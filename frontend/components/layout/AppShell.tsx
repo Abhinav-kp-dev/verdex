@@ -11,6 +11,7 @@ const navItems = [
   { href: '/simulate', label: 'Simulate Disruption' },
   { href: '/reoptimize', label: 'Re-Optimize' },
   { href: '/results', label: 'Results & Reports' },
+  { href: '/carbon', label: 'Carbon Emissions' },
   { href: '/research', label: 'Research Mode' },
 ]
 
