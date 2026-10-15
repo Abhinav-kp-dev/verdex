@@ -1,12 +1,13 @@
 # Verdex
 
-**AI-powered perishable supply chain optimizer — adaptive re-routing, disruption simulation, and AI-generated insights under real-world conditions.**
+**AI-powered perishable supply chain optimizer — adaptive re-routing, disruption simulation, dynamic markdown pricing, and AI-generated insights under real-world conditions.**
 
 [![GitHub](https://img.shields.io/badge/GitHub-Abhinav--kp--dev%2Fverdex-0d1117?style=flat&logo=github)](https://github.com/Abhinav-kp-dev/verdex)
 ![Next.js](https://img.shields.io/badge/Next.js-14-black?style=flat&logo=nextdotjs)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.110-009688?style=flat&logo=fastapi)
 ![Python](https://img.shields.io/badge/Python-3.10+-3776ab?style=flat&logo=python)
 ![Gemini](https://img.shields.io/badge/Gemini-2.5_Flash-4285f4?style=flat&logo=google)
+![Pages](https://img.shields.io/badge/Pages-10-10b981?style=flat)
 
 ---
 
@@ -42,30 +43,38 @@ The result is a globally optimal re-allocation in under 10 milliseconds, deliver
 ## Platform Overview
 
 ```
-┌──────────────────────────────────────────────────────────────────────────────────┐
-│                              Verdex Platform                                     │
-│                                                                                  │
-│  ┌─────────────┐  ┌─────────────┐  ┌──────────────┐  ┌─────────────────────┐   │
-│  │  Dashboard  │  │    Plan     │  │   Simulate   │  │  Results & Reports  │   │
-│  │             │  │  Delivery   │  │  Disruption  │  │                     │   │
-│  │ Live network│  │             │  │              │  │ Sankey charts       │   │
-│  │ overview    │  │ Run LP      │  │ 5 disruption │  │ AI Report (Gemini)  │   │
-│  │ Farm/market │  │ Tune λ      │  │ scenarios    │  │ PDF Export          │   │
-│  │ status      │  │ weights     │  │ Live impact  │  │ Attempt log         │   │
-│  └─────────────┘  └─────────────┘  └──────────────┘  └─────────────────────┘   │
-│                                                                                  │
-│  ┌───────────────────┐  ┌──────────────────────┐  ┌──────────────────────────┐  │
-│  │   Re-Optimize     │  │   Carbon Emissions   │  │    AI Chatbot (Gemini)  │  │
-│  │                   │  │                      │  │                          │  │
-│  │ Stateful residual │  │ Emissions per route  │  │ Context-aware Q&A on    │  │
-│  │ flow re-routing   │  │ CO₂ breakdown        │  │ your supply chain state │  │
-│  │ < 10 ms recovery  │  │ Green route ranking  │  │ Floating assistant      │  │
-│  └───────────────────┘  └──────────────────────┘  └──────────────────────────┘  │
-│                                                                                  │
-│  Frontend: Next.js 14 · Tailwind CSS · Plotly.js · Leaflet · Zustand            │
-│  Backend:  FastAPI · SciPy HiGHS LP solver · Pydantic v2                        │
-│  AI:       Gemini 2.5 Flash · jsPDF + html2canvas for PDF export                │
-└──────────────────────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────────────────┐
+│                                   Verdex Platform                                       │
+│                                                                                         │
+│  ┌─────────────┐  ┌──────────────────┐  ┌───────────────────┐  ┌──────────────────┐   │
+│  │  Dashboard  │  │ Produce Inventory│  │ Destinations &    │  │  Plan Delivery   │   │
+│  │             │  │                  │  │ Demand            │  │                  │   │
+│  │ Live network│  │ Batch table with │  │ Hub cards —       │  │ Run LP optimizer │   │
+│  │ Leaflet map │  │ shelf-life bars  │  │ wholesale, cold   │  │ Tune λ weights   │   │
+│  │ Weather     │  │ Grade, cost, lock│  │ hub, food bank    │  │ Sankey preview   │   │
+│  │ overlay     │  │ Register/edit/   │  │ Per-commodity     │  │                  │   │
+│  │             │  │ delete + filters │  │ demand + pricing  │  │                  │   │
+│  └─────────────┘  └──────────────────┘  └───────────────────┘  └──────────────────┘   │
+│                                                                                         │
+│  ┌──────────────┐  ┌──────────────────┐  ┌──────────────┐  ┌──────────────────────┐   │
+│  │   Simulate   │  │   Re-Optimize    │  │   Results &  │  │  Dynamic Markdowns   │   │
+│  │  Disruption  │  │                  │  │   Reports    │  │                      │   │
+│  │              │  │ Stateful residual│  │              │  │ Per-batch markdown   │   │
+│  │ 5 disruption │  │ flow re-routing  │  │ Sankey chart │  │ rules (<48h / <96h) │   │
+│  │ scenarios    │  │ < 10 ms recovery │  │ AI Report    │  │ Fixed vs elastic     │   │
+│  │ Live impact  │  │ Before/after KPIs│  │ PDF Export   │  │ demand (ε = −1.2)   │   │
+│  └──────────────┘  └──────────────────┘  └──────────────┘  └──────────────────────┘   │
+│                                                                                         │
+│  ┌──────────────────────┐  ┌──────────────────────────────────────────────────────┐    │
+│  │   Carbon Emissions   │  │               AI Chatbot (Gemini 2.5 Flash)          │    │
+│  │ CO₂ per route        │  │  Context-aware Q&A · floating on all pages           │    │
+│  │ Green recommendations│  │  Full supply chain state injected as system prompt   │    │
+│  └──────────────────────┘  └──────────────────────────────────────────────────────┘    │
+│                                                                                         │
+│  Frontend: Next.js 14 · Tailwind CSS · Plotly.js · Leaflet · Zustand                   │
+│  Backend:  FastAPI · SciPy HiGHS LP solver · Pydantic v2                               │
+│  AI:       Gemini 2.5 Flash · jsPDF + html2canvas for PDF export                       │
+└─────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -84,9 +93,25 @@ The result is a globally optimal re-allocation in under 10 milliseconds, deliver
  │  Interactive Leaflet map — nodes & route lines          │
  └────────────────────────────┬────────────────────────────┘
                               │
-                              ▼
+              ┌───────────────┼───────────────┐
+              ▼               ▼               ▼
+ ┌────────────────────┐ ┌────────────────────┐ ┌──────────────────────────┐
+ │ 2. PRODUCE         │ │ 3. DESTINATIONS &  │ │  4. DYNAMIC MARKDOWNS    │
+ │    INVENTORY       │ │    DEMAND          │ │                          │
+ │                    │ │                    │ │  Per-batch markdown rules │
+ │ Batch table with   │ │ Hub cards —        │ │  <48h → Critical (25%)   │
+ │ shelf-life bars,   │ │ wholesale, cold    │ │  <96h → Proactive (15%)  │
+ │ grade, cost, lock  │ │ hub, food bank     │ │  Fixed demand vs elastic  │
+ │ Register/edit/     │ │ Per-commodity      │ │  ε = −1.2 scenarios      │
+ │ delete, search,    │ │ demand + pricing   │ │  Apply → syncs with      │
+ │ filter, sort       │ │ Register/edit/     │ │  optimizer               │
+ │ Allocated batches  │ │ delete + search    │ │                          │
+ │ locked from edit   │ │                    │ │                          │
+ └────────────────────┘ └────────────────────┘ └──────────────────────────┘
+              │
+              ▼
  ┌─────────────────────────────────────────────────────────┐
- │  2. PLAN DELIVERY                                       │
+ │  5. PLAN DELIVERY                                       │
  │  Configure λ weights (spoilage, cost, demand, risk)     │
  │  POST /api/optimize/ → SciPy HiGHS LP solver            │
  │  Returns: allocations, spoilage %, CO₂, cost, score J  │
@@ -96,7 +121,7 @@ The result is a globally optimal re-allocation in under 10 milliseconds, deliver
                  ┌────────────┴────────────┐
                  ▼                         ▼
  ┌───────────────────────────┐  ┌──────────────────────────┐
- │  3. SIMULATE DISRUPTION   │  │  5. RESULTS & REPORTS    │
+ │  6. SIMULATE DISRUPTION   │  │  8. RESULTS & REPORTS    │
  │  Select disruption type   │  │  Sankey allocation chart │
  │  + target asset           │  │  Attempt log             │
  │  POST /api/simulate/      │  │  AI Report tab (Gemini)  │
@@ -106,7 +131,7 @@ The result is a globally optimal re-allocation in under 10 milliseconds, deliver
                │
                ▼
  ┌─────────────────────────────────────────────────────────┐
- │  4. RE-OPTIMIZE                                         │
+ │  7. RE-OPTIMIZE                                         │
  │  POST /api/reoptimize/ with disrupted state             │
  │  Frozen in-flight shipments preserved                   │
  │  LP solves only stranded batches                        │
@@ -115,7 +140,7 @@ The result is a globally optimal re-allocation in under 10 milliseconds, deliver
                │
                ▼
  ┌─────────────────────────────────────────────────────────┐
- │  6. CARBON EMISSIONS                                    │
+ │  9. CARBON EMISSIONS                                    │
  │  Per-route CO₂ breakdown (refrigerated vs direct)      │
  │  Green route vs express route emissions comparison      │
  │  Carbon reduction suggestions                           │
@@ -284,21 +309,24 @@ verdex/
 ├── frontend/
 │   ├── app/                     # Next.js 14 App Router
 │   │   ├── dashboard/           # Live network overview, Leaflet map, weather
+│   │   ├── inventory/           # Produce batch table, register/edit/delete, filters
+│   │   ├── destinations/        # Hub cards, per-commodity demand, register/edit/delete
 │   │   ├── plan/                # Optimizer + λ weight tuning + Sankey preview
 │   │   ├── simulate/            # Disruption injection, 5 scenario panels
 │   │   ├── reoptimize/          # Stateful recovery + before/after comparison
 │   │   ├── results/             # Sankey chart, AI Report tab, attempt log
 │   │   ├── carbon/              # CO₂ emissions breakdown per route
+│   │   ├── markdown/            # Dynamic markdown pricing, elasticity scenarios
 │   │   ├── research/            # Experiments and ablation
 │   │   └── api/
 │   │       ├── chat/route.ts    # Gemini chatbot proxy (server-side)
 │   │       └── report/route.ts  # Gemini report generator (server-side)
 │   ├── components/
-│   │   ├── layout/              # AppShell, StepProgress, sidebar nav
-│   │   └── ui/                  # MetricCard, PageHeader, StatusBadge
+│   │   ├── layout/              # AppShell, StepProgress, sidebar nav (10 items)
+│   │   └── ui/                  # MetricCard, PageHeader, StatusBadge, ChatBot
 │   └── lib/
 │       ├── api.ts               # Typed fetch wrappers for FastAPI
-│       ├── store.ts             # Zustand global state (state, optimizeResult)
+│       ├── store.ts             # Zustand global state + markdownConfig
 │       └── types.ts             # Shared TypeScript types
 │
 └── src/                         # Core Python optimization engine
@@ -364,6 +392,137 @@ $$\text{Risk}_p = \frac{1}{1 + \exp\!\left(-\!\left[\alpha\!\left(\frac{t_p}{\te
 
 ---
 
+## Produce Inventory
+
+The `/inventory` page provides full lifecycle management for produce batches.
+
+### Batch Table Columns
+
+| Column | Description |
+| :--- | :--- |
+| Batch ID | Unique identifier; 🔒 lock icon when allocated to an optimizer run |
+| Commodity | Derived from farm origin (Tomatoes / Onions / Green Chillies / etc.) |
+| Category | Vegetables, Fruits, Spices, Grains, Dairy |
+| Available / Total | Quantity in kg |
+| Shelf Life | Color-coded progress bar: green → amber → orange → red as hours deplete |
+| Arrival Date | Calculated from harvest time |
+| Handling Time | Hours required at receiving dock |
+| Storage °C | Required cold-chain temperature |
+| Grade | A / B / C badge |
+| ₹/kg | Cost per kg |
+| Status | Fresh / At Risk / Low Shelf Life / Critical |
+
+### Status Rules
+
+| Remaining Shelf Life | Status |
+| :--- | :--- |
+| > 96 h | **Fresh** (green) |
+| 48 – 96 h | **At Risk** (amber) |
+| 24 – 48 h | **Low Shelf Life** (orange) |
+| < 24 h | **Critical** (red) |
+
+### Allocated Stock Lock
+
+Batches that appear in the latest optimizer result (`/api/optimize/`) are automatically marked as allocated. Allocated batches:
+- Display a 🔒 icon in the table
+- Have Edit and Delete buttons hidden
+- Cannot be double-dispatched to another route
+
+### Register / Edit / Delete
+
+The "Register New Produce Batch" form validates 12 fields: commodity, category, farm/origin, quantity, initial shelf life, remaining shelf life, arrival date, handling time, storage temperature, batch temperature, grade, and cost per kg. Custom batches are persisted in `localStorage` and merged with live state data.
+
+---
+
+## Destinations & Demand
+
+The `/destinations` page manages delivery hubs with per-commodity demand requirements.
+
+### Hub Types
+
+| Type | Icon | Description |
+| :--- | :---: | :--- |
+| Wholesale Terminal | 🏪 | High-volume APMC-style market, early dock deadline |
+| Cold Hub | 🧊 | Refrigerated distribution centre, strict shelf-life minimums |
+| Food Bank | 🤝 | Community distribution, flexible timing, lower price point |
+
+### Hub Card Metrics
+
+Each card shows: **distance** (km), **transit time** (h), **transport rate** (₹/km), **vehicle capacity** (kg), **dock deadline** (HH:MM), **dock handling time** (h), **total demand** (kg), **priority multiplier**, and a named **contact person with phone**.
+
+### Per-Commodity Demand
+
+Expand any hub card to see the commodity-level demand table:
+
+| Column | Description |
+| :--- | :--- |
+| Commodity | Produce type accepted by this hub |
+| Price/kg | Buying price offered (₹) |
+| Min Shelf Life on Arrival | Minimum remaining shelf life (hours) the hub will accept |
+
+This minimum shelf life requirement feeds directly into the optimizer's perishability cutoff constraint — routes where transit time would leave less than the required shelf life are automatically excluded.
+
+### Register Destination Market Form
+
+Three sections: **Hub Information** (name, type, contact, priority), **Logistics** (distance, travel time, transport rate, vehicle capacity, dock time, dock deadline, demand), and **Per-Commodity Demand** (dynamic rows — add/remove commodities with price and minimum shelf life). Custom destinations persist in `localStorage`.
+
+---
+
+## Dynamic Markdowns & Spoilage Prevention
+
+The `/markdown` page generates per-batch markdown recommendations to salvage at-risk inventory before it expires.
+
+### Markdown Rules
+
+| Remaining Shelf Life | Tier | Discount |
+| :--- | :--- | :--- |
+| < 48 h | **Critical** | 25% off |
+| 48 – 96 h | **Proactive** | 15% off |
+| > 96 h | Healthy | No action needed |
+
+### Two Scenarios Per Batch
+
+For each at-risk batch, the page computes three columns side by side:
+
+**No Markdown (baseline)** — sell-through and revenue at full price, with full waste.
+
+**Scenario A — Fixed Demand** — markdown applied but demand unchanged. Revenue decreases proportionally; waste stays the same as baseline. Shows the pessimistic case.
+
+**Scenario B — Demand-Responsive (ε = −1.2)** — uses price elasticity of demand:
+
+```
+% demand increase = |ε| × discount rate
+25% off  →  30% more demand
+15% off  →  18% more demand
+```
+
+Each scenario shows: sell-through %, revenue, waste (kg), waste avoided (kg), and net salvage value.
+
+### ROI Insight Bar
+
+Every batch card includes an automatically generated insight line explaining the net salvage difference, e.g.:
+
+> *"Proactive batch: a 15% markdown boosts demand by 18% (ε = −1.2). Net revenue increases by ₹4,200 while preventing 69 kg of spoilage."*
+
+### Apply Markdown
+
+Clicking **Apply Markdown** on a scenario:
+- Saves the choice (`batchId → { discount, scenario }`) to the Zustand `markdownConfig` store
+- Persists across page navigation
+- Shows a sync banner linking back to Plan Delivery — re-running the optimizer reflects the demand-boost signal from applied markdowns
+- A "Clear all markdowns" button resets the config
+
+### Summary Cards
+
+| Card | Description |
+| :--- | :--- |
+| At-Risk Volume | Total kg across all batches needing markdown |
+| Projected Waste (no action) | Waste if no markdowns are applied |
+| Waste Prevented (elastic) | Waste saved if all Scenario B markdowns are applied |
+| Markdowns Applied | Count of batches with active markdown config |
+
+---
+
 ## API Reference
 
 | Method | Endpoint | Description |
@@ -374,8 +533,10 @@ $$\text{Risk}_p = \frac{1}{1 + \exp\!\left(-\!\left[\alpha\!\left(\frac{t_p}{\te
 | `POST` | `/api/reoptimize/` | Run stateful residual re-optimizer on a disrupted state |
 | `GET` | `/api/reports/` | Fetch stored optimization attempt history |
 | `GET` | `/api/data/` | Raw data endpoints for experiments |
-| `POST` | `/api/chat` | Gemini chatbot proxy (Next.js server-side) |
-| `POST` | `/api/report` | Gemini report generator (Next.js server-side) |
+| `POST` | `/api/chat` | Gemini chatbot proxy — server-side, injects full state as system prompt |
+| `POST` | `/api/report` | Gemini report generator — returns structured JSON report with 10 sections |
+
+> **Inventory & Destinations** data is managed client-side (Zustand + `localStorage`) and does not require new backend endpoints. The optimizer reads batch and market data from `/api/state`; custom registered entries augment the live data in the frontend only.
 
 ### POST /api/optimize/ payload example
 
@@ -516,16 +677,18 @@ python -m src.experiments --scenarios 100
 | Layer | Technology | Purpose |
 | :--- | :--- | :--- |
 | Frontend framework | Next.js 14 (App Router) | Server components, API routes, file-based routing |
-| Styling | Tailwind CSS | Dark-theme UI |
-| State management | Zustand | Cross-page supply chain state (persists across client-side navigation) |
+| Styling | Tailwind CSS | Dark-theme UI with CSS variable theming |
+| State management | Zustand | Cross-page supply chain state + markdownConfig |
+| Local persistence | localStorage | Custom batches, destinations, markdown configs |
 | Charts | Plotly.js | Sankey allocation diagram, line charts |
 | Map | Leaflet + react-leaflet | Interactive supply chain network map |
-| AI — chatbot | Gemini 2.5 Flash | Context-aware supply chain Q&A |
-| AI — reports | Gemini 2.5 Flash | Structured JSON report generation |
+| AI — chatbot | Gemini 2.5 Flash | Context-aware supply chain Q&A (floating, all pages) |
+| AI — reports | Gemini 2.5 Flash | Structured JSON report with 10 sections |
 | PDF export | jsPDF + html2canvas | Multi-page A4 PDF from rendered DOM |
 | Backend framework | FastAPI | REST API, Pydantic v2 validation, CORS |
 | LP solver | SciPy HiGHS | Exact multi-objective linear programming |
 | Spoilage model | Custom Python | Arrhenius thermal kinetics |
+| Markdown engine | Custom TypeScript | Price elasticity (ε = −1.2), shelf-life rules |
 | Testing | pytest | 73 tests across unit, integration, performance |
 
 ---
@@ -560,5 +723,8 @@ Network topology and volumes are generated from reproducible seeds. Spoilage kin
 | Single-period optimization | Rolling-horizon predictive re-optimization |
 | Simulated network data | Live MQTT ingestion from IoT cold-chain loggers and OBD-II telematics |
 | Single depot per route | Multi-depot consolidation and cross-docking |
-| Gemini report is regenerated on each click | Cache report in Zustand; invalidate on new optimizer run |
+| Gemini report regenerated on each click | Cache report in Zustand; invalidate on new optimizer run |
 | PDF export captures rendered pixels | Native PDF generation with vector text for smaller file size |
+| Inventory & destinations stored in localStorage | Sync to backend database for multi-user and persistence across devices |
+| Markdown config not fed directly into LP | Modify market demand in optimizer payload based on applied elasticity boosts |
+| Min shelf life per commodity not enforced in optimizer | Wire destination min-shelf-life requirements into the perishability cutoff constraint |
