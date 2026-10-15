@@ -25,18 +25,43 @@ The industry response to disruptions is manual: dispatchers make phone calls, re
 
 ---
 
-## The Idea
+## The Solution
 
-Treat supply chain re-routing as a **mathematical optimization problem that can be solved in milliseconds**.
+Verdex treats the entire perishable supply chain as a **live, continuously solvable mathematical system** — not a static plan that gets updated once a day, but a dynamic model that responds to the real world in milliseconds.
 
-Every batch of perishable produce has a shelf life. Every route has a travel time and a thermal profile. Every storage facility has a capacity. Every market has a demand. These are not soft preferences — they are hard constraints that can be encoded precisely into a linear program.
+### Optimal Allocation from the Start
 
-When a disruption occurs, the system does not start over. It:
-1. **Freezes** allocations that are already in motion and still viable.
-2. **Ages** the remaining inventory by the disruption duration.
-3. **Solves a residual LP** for the stranded batches only — finding new routes that respect remaining shelf lives, available capacity, and market demand.
+Before a single truck moves, Verdex solves a **multi-objective linear program** across every batch, route, vehicle, storage facility, and market simultaneously. It balances four competing priorities — spoilage risk, delivery cost, demand fulfillment, and route safety — using configurable λ weights so operators can tune the system to their priorities. The result is not a heuristic or an approximation. It is the mathematically provable optimal allocation given the constraints.
 
-The result is a globally optimal re-allocation in under 10 milliseconds, delivered through a live dashboard that shows exactly what changed, what was saved, and what was lost.
+Every constraint the real world imposes is encoded: shelf life per batch, vehicle capacity, cold storage availability, minimum shelf life on arrival at each destination, per-commodity demand caps, and route-level travel time. Nothing is assumed. Nothing is guessed.
+
+### Disruption Recovery in Under 10ms
+
+When something breaks — a vehicle fails, a cold storage loses power, a road closes after a flood, a regional heatwave cuts shelf lives overnight — Verdex does not start from scratch. It:
+
+1. **Freezes** in-flight shipments that are already viable and in motion.
+2. **Ages** remaining inventory by the disruption duration, recalculating spoilage risk in real time.
+3. **Runs a residual LP** on only the stranded batches, finding new routes that respect remaining shelf lives, available capacity, and unmet demand.
+
+The recovery plan is ready in under 10 milliseconds. A human dispatcher making the same calls would take hours — and likely still produce a worse result.
+
+### Spoilage-Aware Dynamic Markdown Pricing
+
+Not every batch can be re-routed in time. For batches approaching expiry, Verdex runs a **price elasticity engine** (ε = −1.2) that models two scenarios: a fixed emergency discount and a demand-adjusted markdown that maximizes recovered revenue. Operators see exactly how much volume they can save, at what price, and what the financial outcome is before they commit — turning what would have been a total loss into partial recovery.
+
+### Carbon-Aware Routing
+
+Every allocation carries a carbon cost. Verdex calculates **CO₂ emissions per route** based on distance, load weight, and vehicle type — distinguishing between refrigerated cold-chain routes and direct ambient delivery. Operators can compare the carbon footprint of the optimized plan against alternatives, and the system surfaces green routing recommendations where spoilage risk allows a lower-emission path.
+
+### AI-Powered Decision Support
+
+An embedded **Gemini 2.5 Flash** assistant has full visibility into the current supply chain state — batches, allocations, disruptions, re-optimization results. It can explain why a specific batch was routed a certain way, what the risk of a proposed change is, or what the highest-impact intervention would be at any point in the workflow. Every page also generates a structured AI report that can be exported as a PDF for stakeholder review.
+
+### The Impact
+
+For logistics managers, this replaces hours of manual calls and spreadsheet guesswork with a single optimized decision in seconds. For farmers and distributors, it means more produce reaches markets before it spoils — directly protecting revenue. For food banks and wholesale hubs, it means reliable, timely stock with accurate shelf-life data on arrival. And for the environment, it means fewer vehicles making unnecessary trips and a measurable reduction in the carbon cost of getting food to people.
+
+India alone loses an estimated **₹92,000 crore** worth of food every year in post-harvest waste. That is not an agricultural problem. It is a logistics problem. And Verdex solves it.
 
 ---
 
