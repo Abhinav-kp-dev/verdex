@@ -1,11 +1,12 @@
 # Verdex
 
-**Perishable supply chain optimizer — adaptive re-routing under real-world disruptions.**
+**AI-powered perishable supply chain optimizer — adaptive re-routing, disruption simulation, and AI-generated insights under real-world conditions.**
 
 [![GitHub](https://img.shields.io/badge/GitHub-Abhinav--kp--dev%2Fverdex-0d1117?style=flat&logo=github)](https://github.com/Abhinav-kp-dev/verdex)
 ![Next.js](https://img.shields.io/badge/Next.js-14-black?style=flat&logo=nextdotjs)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.110-009688?style=flat&logo=fastapi)
 ![Python](https://img.shields.io/badge/Python-3.10+-3776ab?style=flat&logo=python)
+![Gemini](https://img.shields.io/badge/Gemini-2.5_Flash-4285f4?style=flat&logo=google)
 
 ---
 
@@ -38,142 +39,283 @@ The result is a globally optimal re-allocation in under 10 milliseconds, deliver
 
 ---
 
-## Solution Overview
+## Platform Overview
 
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│                        Verdex Platform                              │
-│                                                                     │
-│  ┌──────────────┐    ┌──────────────┐    ┌──────────────────────┐  │
-│  │   Dashboard  │    │ Plan & Tune  │    │  Simulate & Recover  │  │
-│  │              │    │              │    │                      │  │
-│  │ Live network │    │ Run the LP   │    │ Inject disruption →  │  │
-│  │ overview     │    │ Tune λ       │    │ dynamic re-optimize  │  │
-│  │ Batch status │    │ weights      │    │ in < 10 ms           │  │
-│  └──────────────┘    └──────────────┘    └──────────────────────┘  │
-│                                                                     │
-│  Frontend: Next.js 14 · Tailwind CSS · Plotly.js · Zustand         │
-│  Backend:  FastAPI · SciPy HiGHS LP solver · Pydantic v2           │
-└─────────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────────────────┐
+│                              Verdex Platform                                     │
+│                                                                                  │
+│  ┌─────────────┐  ┌─────────────┐  ┌──────────────┐  ┌─────────────────────┐   │
+│  │  Dashboard  │  │    Plan     │  │   Simulate   │  │  Results & Reports  │   │
+│  │             │  │  Delivery   │  │  Disruption  │  │                     │   │
+│  │ Live network│  │             │  │              │  │ Sankey charts       │   │
+│  │ overview    │  │ Run LP      │  │ 5 disruption │  │ AI Report (Gemini)  │   │
+│  │ Farm/market │  │ Tune λ      │  │ scenarios    │  │ PDF Export          │   │
+│  │ status      │  │ weights     │  │ Live impact  │  │ Attempt log         │   │
+│  └─────────────┘  └─────────────┘  └──────────────┘  └─────────────────────┘   │
+│                                                                                  │
+│  ┌───────────────────┐  ┌──────────────────────┐  ┌──────────────────────────┐  │
+│  │   Re-Optimize     │  │   Carbon Emissions   │  │    AI Chatbot (Gemini)  │  │
+│  │                   │  │                      │  │                          │  │
+│  │ Stateful residual │  │ Emissions per route  │  │ Context-aware Q&A on    │  │
+│  │ flow re-routing   │  │ CO₂ breakdown        │  │ your supply chain state │  │
+│  │ < 10 ms recovery  │  │ Green route ranking  │  │ Floating assistant      │  │
+│  └───────────────────┘  └──────────────────────┘  └──────────────────────────┘  │
+│                                                                                  │
+│  Frontend: Next.js 14 · Tailwind CSS · Plotly.js · Leaflet · Zustand            │
+│  Backend:  FastAPI · SciPy HiGHS LP solver · Pydantic v2                        │
+│  AI:       Gemini 2.5 Flash · jsPDF + html2canvas for PDF export                │
+└──────────────────────────────────────────────────────────────────────────────────┘
 ```
-
-The workflow follows four stages:
-
-| Stage | Page | What happens |
-| :---: | :--- | :--- |
-| 1 | **Dashboard** | Load the supply network. Inspect farms, storage hubs, markets, and batch statuses. |
-| 2 | **Plan Delivery** | Run the multi-objective optimizer. Tune spoilage, cost, unmet demand, and risk weights. Review the Sankey allocation chart. |
-| 3 | **Simulate Disruption** | Inject a truck breakdown, cold storage failure, demand shock, heatwave, or road closure. See which nodes go offline. |
-| 4 | **Re-Optimize** | Run the stateful re-optimizer. Stranded batches are rerouted; in-flight valid shipments are preserved. |
 
 ---
 
-## Key Differentiators
+## End-to-End Workflow
 
-**vs. static allocation dashboards**
-Most supply chain tools visualize what happened. Verdex computes what should happen next, in real time, under the current network state.
+```
+ User Opens Dashboard
+        │
+        ▼
+ ┌─────────────────────────────────────────────────────────┐
+ │  1. DASHBOARD                                           │
+ │  GET /api/state → load farms, storage, markets,         │
+ │  batches, routes, trucks                                │
+ │  Live weather overlay via external API                  │
+ │  Interactive Leaflet map — nodes & route lines          │
+ └────────────────────────────┬────────────────────────────┘
+                              │
+                              ▼
+ ┌─────────────────────────────────────────────────────────┐
+ │  2. PLAN DELIVERY                                       │
+ │  Configure λ weights (spoilage, cost, demand, risk)     │
+ │  POST /api/optimize/ → SciPy HiGHS LP solver            │
+ │  Returns: allocations, spoilage %, CO₂, cost, score J  │
+ │  Zustand stores result for downstream pages             │
+ └────────────────────────────┬────────────────────────────┘
+                              │
+                 ┌────────────┴────────────┐
+                 ▼                         ▼
+ ┌───────────────────────────┐  ┌──────────────────────────┐
+ │  3. SIMULATE DISRUPTION   │  │  5. RESULTS & REPORTS    │
+ │  Select disruption type   │  │  Sankey allocation chart │
+ │  + target asset           │  │  Attempt log             │
+ │  POST /api/simulate/      │  │  AI Report tab (Gemini)  │
+ │  Scenario-specific impact │  │   → Generate report      │
+ │  panel shown per type     │  │   → Download as PDF      │
+ └─────────────┬─────────────┘  └──────────────────────────┘
+               │
+               ▼
+ ┌─────────────────────────────────────────────────────────┐
+ │  4. RE-OPTIMIZE                                         │
+ │  POST /api/reoptimize/ with disrupted state             │
+ │  Frozen in-flight shipments preserved                   │
+ │  LP solves only stranded batches                        │
+ │  Before/after comparison shown                          │
+ └─────────────────────────────────────────────────────────┘
+               │
+               ▼
+ ┌─────────────────────────────────────────────────────────┐
+ │  6. CARBON EMISSIONS                                    │
+ │  Per-route CO₂ breakdown (refrigerated vs direct)      │
+ │  Green route vs express route emissions comparison      │
+ │  Carbon reduction suggestions                           │
+ └─────────────────────────────────────────────────────────┘
 
-**vs. greedy heuristics**
-Nearest-market and cheapest-route approaches optimize one variable in isolation. Verdex balances spoilage, cost, unmet demand, and route risk simultaneously through a single exact LP.
-
-**vs. re-running the full optimizer from scratch**
-A full restart after a disruption ignores in-flight shipments that are still viable, wastes solver time on already-settled allocations, and produces plans that contradict reality. Verdex's stateful re-optimizer only acts on what is actually stranded.
-
-**Zero fabrication policy**
-Every benchmark figure in this repository is produced by running `python -m src.experiments --scenarios 100` with fixed seeds. No numbers were written by hand.
+  ┌──────────────────────────────────────────────────────┐
+  │  AI CHATBOT (Floating, all pages)                    │
+  │  Gemini 2.5 Flash with full supply chain context     │
+  │  Asks about routes, spoilage, re-routing strategies  │
+  └──────────────────────────────────────────────────────┘
+```
 
 ---
 
 ## System Architecture
 
 ```
-                  ┌──────────────────────────────────────────────┐
-                  │          Supply-Chain Data Layer             │
-                  │  Farms | Storage Hubs | Markets | Batches    │
-                  └──────────────────────┬───────────────────────┘
-                                         │
-                                         ▼
-                  ┌──────────────────────────────────────────────┐
-                  │    Biophysical Spoilage Kinetics Engine      │
-                  │ Arrhenius Thermal Acceleration & Decay Power │
-                  └──────────────────────┬───────────────────────┘
-                                         │
-              ┌──────────────────────────┼──────────────────────────┐
-              ▼                          ▼                           ▼
-   ┌──────────────────┐       ┌──────────────────┐       ┌─────────────────────┐
-   │ Nearest Market   │       │ Cheapest Route   │       │    Verdex DPSRO     │
-   │ Baseline (Greedy)│       │ Baseline (LP)    │       │ Multi-Objective MIP │
-   └──────────────────┘       └──────────────────┘       └──────────┬──────────┘
-                                                                     │
-                                                                     ▼
-                                                          ┌──────────────────────┐
-                                                          │  Disruption Engine   │
-                                                          │ Truck / Storage /    │
-                                                          │ Heatwave / Road /    │
-                                                          │ Demand Shock         │
-                                                          └──────────┬───────────┘
-                                                                     │
-                                                                     ▼
-                                                          ┌──────────────────────┐
-                                                          │  Dynamic Reoptimizer │
-                                                          │  Stateful Residual   │
-                                                          │  Flow Re-routing     │
-                                                          └──────────┬───────────┘
-                                                                     │
-                                                                     ▼
-                                                          ┌──────────────────────┐
-                                                          │   Next.js Dashboard  │
-                                                          │   FastAPI · Plotly   │
-                                                          └──────────────────────┘
+                    ┌─────────────────────────────────────────────────────────┐
+                    │                     Browser (Next.js 14)                │
+                    │                                                         │
+                    │  ┌────────────┐ ┌──────────┐ ┌──────────┐ ┌─────────┐  │
+                    │  │ Dashboard  │ │   Plan   │ │Simulate  │ │Results  │  │
+                    │  │  /dashboard│ │  /plan   │ │/simulate │ │/results │  │
+                    │  └─────┬──────┘ └────┬─────┘ └────┬─────┘ └────┬────┘  │
+                    │        │             │             │            │        │
+                    │        └─────────────┴──────┬──────┴────────────┘        │
+                    │                             │                            │
+                    │                    ┌────────▼────────┐                  │
+                    │                    │  Zustand Store  │                  │
+                    │                    │  (global state) │                  │
+                    │                    └────────┬────────┘                  │
+                    │                             │                            │
+                    │              ┌──────────────┴──────────────┐            │
+                    │              │       Next.js API Routes     │            │
+                    │              │  /api/chat  /api/report      │            │
+                    │              └──────────────┬──────────────┘            │
+                    └─────────────────────────────┼───────────────────────────┘
+                                                  │
+                             ┌────────────────────┼────────────────────┐
+                             │                    │                    │
+                             ▼                    ▼                    ▼
+               ┌─────────────────────┐  ┌──────────────────┐  ┌───────────────┐
+               │   FastAPI Backend   │  │  Gemini 2.5 Flash│  │  Weather API  │
+               │   (port 8000)       │  │  (via /api/chat  │  │  (live temp   │
+               │                     │  │   /api/report)   │  │   overlay)    │
+               │  /api/state         │  └──────────────────┘  └───────────────┘
+               │  /api/optimize/     │
+               │  /api/simulate/     │
+               │  /api/reoptimize/   │
+               │  /api/reports/      │
+               └──────────┬──────────┘
+                          │
+               ┌──────────▼──────────┐
+               │   Python Core (src/)│
+               │                     │
+               │  optimizer.py       │
+               │  (SciPy HiGHS LP)   │
+               │                     │
+               │  dynamic_optimizer  │
+               │  (stateful residual)│
+               │                     │
+               │  disruption.py      │
+               │  (5 event classes)  │
+               │                     │
+               │  spoilage_model.py  │
+               │  (Arrhenius kinetics│
+               └─────────────────────┘
 ```
 
-### Project structure
+---
+
+## Disruption Engine — All 5 Scenarios
+
+```
+  SELECT DISRUPTION TYPE
+         │
+         ├─── truck_breakdown ──────► TruckFailureDisruption(truck_id)
+         │                              marks truck unavailable
+         │                              closes all routes using that truck
+         │                              Frontend: shows offline trucks + blocked routes
+         │
+         ├─── cold_storage_failure ─► StorageOutageDisruption(storage_id)
+         │                              marks storage offline
+         │                              cascade-closes routes through that hub
+         │                              Frontend: shows capacity lost + closed routes
+         │
+         ├─── demand_shock ─────────► DemandShockDisruption(market_id, ×2.5)
+         │                              multiplies target market demand by 2.5×
+         │                              Frontend: side-by-side demand comparison per market
+         │
+         ├─── heatwave ─────────────► TemperatureShockDisruption(Δ+12°C)
+         │                              raises ambient temp on all batches and routes
+         │                              accelerates spoilage via Arrhenius factor
+         │                              Frontend: batch temp table + route risk table
+         │
+         └─── road_closure ─────────► RouteClosureDisruption(route_id)
+                                        marks specific route unavailable
+                                        Frontend: detailed route card with metrics
+```
+
+---
+
+## AI Features
+
+### Gemini 2.5 Flash Report Generation
+
+After running the optimizer, the Results page generates a full supply chain report via Gemini 2.5 Flash:
+
+```
+  User clicks "Generate AI Report"
+         │
+         ▼
+  POST /api/report
+         │
+         │  Context sent to Gemini:
+         │  ├─ Farm availability & harvest quantities
+         │  ├─ Cold storage load & capacity
+         │  ├─ Market demand & priority weights
+         │  ├─ All route metrics (distance, CO₂, risk factor)
+         │  ├─ Optimizer results (spoilage %, cost, CO₂, score J)
+         │  ├─ Batch allocations (top 10)
+         │  └─ Live weather (temperature, heat risk flags)
+         │
+         ▼
+  Gemini returns structured JSON:
+  ├─ executive_summary
+  ├─ kpi_highlights (color-coded: good / warning / critical)
+  ├─ best_routes (green "Optimal" badges)
+  ├─ worst_routes (red "Risk" badges)
+  ├─ spoilage_analysis + reduction_strategies (HIGH/MEDIUM/LOW)
+  ├─ carbon_insights + green_recommendations
+  ├─ cost_analysis + optimization_opportunities
+  ├─ weather_impact
+  └─ action_items (Immediate / Short-term / Long-term)
+         │
+         ▼
+  Rendered in browser → "Download PDF" button
+         │
+         ▼
+  html2canvas captures rendered DOM → jsPDF multi-page A4 export
+```
+
+Report sections are color-coded: green = performing well, amber = needs attention, red = critical risk.
+
+### AI Chatbot
+
+A floating chat assistant (bottom-right on every page) powered by Gemini 2.5 Flash with full supply chain context injected as a system instruction. It can answer questions about current routes, spoilage causes, re-routing strategies, and disruption impacts.
+
+---
+
+## Project Structure
 
 ```
 verdex/
 ├── backend/
-│   ├── main.py              # FastAPI app, CORS, router mounts
-│   ├── schemas.py           # Pydantic v2 I/O schemas
+│   ├── main.py                  # FastAPI app, CORS, router mounts
+│   ├── schemas.py               # Pydantic v2 I/O schemas
 │   └── routers/
-│       ├── state.py         # GET  /api/state
-│       ├── optimize.py      # POST /api/optimize/
-│       ├── simulate.py      # POST /api/simulate/
-│       ├── reoptimize.py    # POST /api/reoptimize/
-│       ├── reports.py       # GET  /api/reports/
-│       └── data.py          # GET  /api/data/
+│       ├── state.py             # GET  /api/state
+│       ├── optimize.py          # POST /api/optimize/
+│       ├── simulate.py          # POST /api/simulate/
+│       ├── reoptimize.py        # POST /api/reoptimize/
+│       ├── reports.py           # GET  /api/reports/
+│       └── data.py              # GET  /api/data/
 │
 ├── frontend/
-│   ├── app/                 # Next.js 14 App Router
-│   │   ├── dashboard/       # Live network overview
-│   │   ├── plan/            # Optimizer + lambda weight tuning
-│   │   ├── simulate/        # Disruption injection
-│   │   ├── reoptimize/      # Stateful recovery
-│   │   ├── results/         # Reports and Sankey charts
-│   │   └── research/        # Experiments and ablation
+│   ├── app/                     # Next.js 14 App Router
+│   │   ├── dashboard/           # Live network overview, Leaflet map, weather
+│   │   ├── plan/                # Optimizer + λ weight tuning + Sankey preview
+│   │   ├── simulate/            # Disruption injection, 5 scenario panels
+│   │   ├── reoptimize/          # Stateful recovery + before/after comparison
+│   │   ├── results/             # Sankey chart, AI Report tab, attempt log
+│   │   ├── carbon/              # CO₂ emissions breakdown per route
+│   │   ├── research/            # Experiments and ablation
+│   │   └── api/
+│   │       ├── chat/route.ts    # Gemini chatbot proxy (server-side)
+│   │       └── report/route.ts  # Gemini report generator (server-side)
 │   ├── components/
-│   │   ├── layout/          # AppShell, StepProgress
-│   │   └── ui/              # MetricCard, PageHeader, StatusBadge
+│   │   ├── layout/              # AppShell, StepProgress, sidebar nav
+│   │   └── ui/                  # MetricCard, PageHeader, StatusBadge
 │   └── lib/
-│       ├── api.ts            # Typed fetch wrappers
-│       ├── store.ts          # Zustand global state
-│       └── types.ts          # Shared TypeScript types
+│       ├── api.ts               # Typed fetch wrappers for FastAPI
+│       ├── store.ts             # Zustand global state (state, optimizeResult)
+│       └── types.ts             # Shared TypeScript types
 │
-└── src/                     # Core Python optimization engine
-    ├── optimizer.py          # Multi-objective LP (SciPy HiGHS)
-    ├── dynamic_optimizer.py  # Stateful re-optimizer
-    ├── disruption.py         # Disruption event handlers
-    ├── spoilage_model.py     # Arrhenius kinetics
-    ├── models.py             # Domain dataclasses
+└── src/                         # Core Python optimization engine
+    ├── optimizer.py             # Multi-objective LP (SciPy HiGHS)
+    ├── dynamic_optimizer.py     # Stateful re-optimizer (residual flow)
+    ├── disruption.py            # 5 disruption event classes
+    ├── spoilage_model.py        # Arrhenius thermal kinetics
+    ├── models.py                # Domain dataclasses (Farm, Route, Batch, etc.)
     ├── simulation.py
-    ├── experiments.py
-    └── ...
+    └── experiments.py           # 100-scenario Monte Carlo benchmarks
 ```
 
 ---
 
 ## Mathematical Formulation
 
-### Objective function
+### Objective Function
 
 Minimize total supply-chain penalty $J$:
 
@@ -184,7 +326,7 @@ $$\min_{x \ge 0,\; u \ge 0} \; J = \lambda_{\text{spoilage}} \sum_{p \in \mathca
 | $x_p$ | Dispatch quantity (kg) along path $p = (\text{batch},\; \text{farm} \to \text{storage} \to \text{market})$ |
 | $u_m$ | Unmet demand slack at market $m$ |
 | $s_p \in [0,1]$ | Spoilage fraction (Arrhenius kinetics) |
-| $c_p$ | Transport cost per kg (\$/kg) |
+| $c_p$ | Transport cost per kg ($/kg) |
 | $r_p \in [0,1]$ | Composite corridor and thermal risk |
 | $\pi_m$ | Market priority weight |
 | $\lambda_{1..4}$ | User-configurable penalty weights |
@@ -206,7 +348,7 @@ $$x_p = 0 \qquad \text{if } t_p > \text{shelf\_life}_b$$
 **5. Non-negativity:**
 $$x_p \ge 0, \quad u_m \ge 0$$
 
-### Spoilage kinetics
+### Spoilage Kinetics
 
 Spoilage fraction $s_p$ is derived from Arrhenius thermal acceleration:
 
@@ -222,13 +364,52 @@ $$\text{Risk}_p = \frac{1}{1 + \exp\!\left(-\!\left[\alpha\!\left(\frac{t_p}{\te
 
 ---
 
+## API Reference
+
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `GET` | `/api/state` | Load initial supply chain state (farms, routes, trucks, batches, markets, storage) |
+| `POST` | `/api/optimize/` | Run multi-objective LP optimizer with user-supplied λ weights |
+| `POST` | `/api/simulate/` | Apply a disruption event to the current state |
+| `POST` | `/api/reoptimize/` | Run stateful residual re-optimizer on a disrupted state |
+| `GET` | `/api/reports/` | Fetch stored optimization attempt history |
+| `GET` | `/api/data/` | Raw data endpoints for experiments |
+| `POST` | `/api/chat` | Gemini chatbot proxy (Next.js server-side) |
+| `POST` | `/api/report` | Gemini report generator (Next.js server-side) |
+
+### POST /api/optimize/ payload example
+
+```json
+{
+  "state": { "farms": {}, "routes": {}, "trucks": {}, "storage_facilities": {}, "markets": {}, "batches": {} },
+  "lambda_spoilage": 10,
+  "lambda_cost": 0.15,
+  "lambda_unmet": 15,
+  "lambda_risk": 5
+}
+```
+
+### POST /api/simulate/ payload example
+
+```json
+{
+  "state": { "..." },
+  "disruption_type": "truck_breakdown",
+  "target_id": "T1"
+}
+```
+
+Supported `disruption_type` values: `truck_breakdown`, `cold_storage_failure`, `demand_shock`, `heatwave`, `road_closure`.
+
+---
+
 ## Benchmark Results
 
 All figures are produced by `python -m src.experiments --scenarios 100` across seeds 1000–1100. No results are manually authored.
 
-### Post-disruption comparison (100 Monte Carlo scenarios)
+### Post-Disruption Comparison (100 Monte Carlo Scenarios)
 
-| Method | Spoilage % (mean ± std) | Spoilage (kg) | Demand fulfilled | Freight cost | Recovery time |
+| Method | Spoilage % (mean ± std) | Spoilage (kg) | Demand Fulfilled | Freight Cost | Recovery Time |
 | :--- | :---: | :---: | :---: | :---: | :---: |
 | Nearest market (greedy) | 13.82% ± 3.41% | 2,840 kg | 86.18% | $4,812 | 0.3 ms |
 | Cheapest route (LP) | 4.65% ± 1.82% | 1,024 kg | 95.35% | $3,618 | 7.8 ms |
@@ -236,9 +417,9 @@ All figures are produced by `python -m src.experiments --scenarios 100` across s
 
 **85.5% less spoilage** than greedy. **60.3% less** than cheapest-route. Only **7.5% higher freight cost** to eliminate 610 kg of avoidable waste per scenario.
 
-### Scalability (problem size vs. HiGHS solver time)
+### Scalability (Problem Size vs. HiGHS Solver Time)
 
-| Batches | Decision variables | Verdex | Cheapest route LP | Greedy |
+| Batches | Decision Variables | Verdex | Cheapest Route LP | Greedy |
 | :---: | :---: | :---: | :---: | :---: |
 | 10 | ~50 | 5.1 ms | 6.2 ms | 0.2 ms |
 | 25 | ~125 | 9.8 ms | 5.4 ms | 0.4 ms |
@@ -249,9 +430,9 @@ All figures are produced by `python -m src.experiments --scenarios 100` across s
 
 At 500 batches and ~9,000 decision variables, the exact LP solves in under 1.7 seconds.
 
-### Ablation (component contribution)
+### Ablation (Component Contribution)
 
-| Model variant | Spoilage % | Demand fulfilled | Freight cost | Recovery time |
+| Model Variant | Spoilage % | Demand Fulfilled | Freight Cost | Recovery Time |
 | :--- | :---: | :---: | :---: | :---: |
 | **Full Verdex** | **4.88%** | **88.64%** | **$7,295** | **5.4 ms** |
 | No risk term ($\lambda_{\text{risk}}=0$) | 4.87% | 88.65% | $7,309 | 5.2 ms |
@@ -262,11 +443,28 @@ Removing spoilage from the objective spikes waste to 11.07%. Static restart achi
 
 ---
 
+## Key Differentiators
+
+**vs. static allocation dashboards**
+Most supply chain tools visualize what happened. Verdex computes what should happen next, in real time, under the current network state.
+
+**vs. greedy heuristics**
+Nearest-market and cheapest-route approaches optimize one variable in isolation. Verdex balances spoilage, cost, unmet demand, and route risk simultaneously through a single exact LP.
+
+**vs. re-running the full optimizer from scratch**
+A full restart after a disruption ignores in-flight shipments that are still viable, wastes solver time on already-settled allocations, and produces plans that contradict reality. Verdex's stateful re-optimizer only acts on what is actually stranded.
+
+**Zero fabrication policy**
+Every benchmark figure in this repository is produced by running `python -m src.experiments --scenarios 100` with fixed seeds. No numbers were written by hand.
+
+---
+
 ## Installation
 
 ### Prerequisites
 - Python 3.10+
 - Node.js 18+
+- A Gemini API key (for chatbot and AI report features)
 
 ### Backend
 
@@ -282,23 +480,53 @@ uvicorn backend.main:app --port 8000 --reload
 ```bash
 cd frontend
 npm install
+```
+
+Create `frontend/.env.local`:
+
+```env
+GEMINI_API_KEY=your_gemini_api_key_here
+```
+
+> **Important:** Never prefix this with `NEXT_PUBLIC_` — it must remain server-side only and is only accessed via the `/api/chat` and `/api/report` Next.js route handlers.
+
+```bash
 npm run dev
 ```
 
 Open `http://localhost:3000`.
 
-### Run tests
+### Run Tests
 
 ```bash
 pytest tests/ -v
 # 73 passed in ~3.3 s  (unit, constraints, disruptions, performance, validation, security)
 ```
 
-### Run experiments
+### Run Experiments
 
 ```bash
 python -m src.experiments --scenarios 100
 ```
+
+---
+
+## Technology Stack
+
+| Layer | Technology | Purpose |
+| :--- | :--- | :--- |
+| Frontend framework | Next.js 14 (App Router) | Server components, API routes, file-based routing |
+| Styling | Tailwind CSS | Dark-theme UI |
+| State management | Zustand | Cross-page supply chain state (persists across client-side navigation) |
+| Charts | Plotly.js | Sankey allocation diagram, line charts |
+| Map | Leaflet + react-leaflet | Interactive supply chain network map |
+| AI — chatbot | Gemini 2.5 Flash | Context-aware supply chain Q&A |
+| AI — reports | Gemini 2.5 Flash | Structured JSON report generation |
+| PDF export | jsPDF + html2canvas | Multi-page A4 PDF from rendered DOM |
+| Backend framework | FastAPI | REST API, Pydantic v2 validation, CORS |
+| LP solver | SciPy HiGHS | Exact multi-objective linear programming |
+| Spoilage model | Custom Python | Arrhenius thermal kinetics |
+| Testing | pytest | 73 tests across unit, integration, performance |
 
 ---
 
@@ -313,6 +541,12 @@ The ablation confirms it: removing the spoilage term pushes waste to 11.07% beca
 **What solver is used?**
 The **HiGHS** simplex / interior-point solver via `scipy.optimize.linprog(method='highs')`. It is an exact LP solver with no external binary dependencies and guaranteed global optimality.
 
+**Why does the re-optimizer not restart from scratch?**
+In-flight shipments that are already en route and viable represent locked commitments. Cancelling them wastes operational resources and shelf life. The stateful re-optimizer freezes those allocations and only re-solves for the stranded residual, reducing both solver time and operational disruption.
+
+**How does the Gemini API report work?**
+The `/api/report` Next.js route handler (server-side) builds a structured prompt from the current Zustand state — farm volumes, route metrics, optimizer results, and live weather — and sends it to Gemini 2.5 Flash. Gemini returns a structured JSON object which is rendered in the browser and can be exported as a PDF.
+
 **Is the data real?**
 Network topology and volumes are generated from reproducible seeds. Spoilage kinetics and shelf-life parameters are calibrated to USDA Handbook No. 66 and FAO post-harvest benchmarks.
 
@@ -320,9 +554,11 @@ Network topology and volumes are generated from reproducible seeds. Spoilage kin
 
 ## Known Limitations & Future Work
 
-| Limitation | Planned work |
+| Limitation | Planned Work |
 | :--- | :--- |
 | Deterministic transit times | Stochastic travel time distributions |
 | Single-period optimization | Rolling-horizon predictive re-optimization |
 | Simulated network data | Live MQTT ingestion from IoT cold-chain loggers and OBD-II telematics |
 | Single depot per route | Multi-depot consolidation and cross-docking |
+| Gemini report is regenerated on each click | Cache report in Zustand; invalidate on new optimizer run |
+| PDF export captures rendered pixels | Native PDF generation with vector text for smaller file size |
