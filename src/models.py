@@ -91,6 +91,7 @@ class TransportRoute:
     transport_cost_per_unit: float
     available: bool = True
     risk_factor: float = 0.1  # Inherent risk/congestion 0.0 to 1.0
+    co2_kg_per_km: float = 0.9  # Refrigerated truck default
 
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)

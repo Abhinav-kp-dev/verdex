@@ -8,7 +8,7 @@ import * as api from '@/lib/api'
 import MetricCard from '@/components/ui/MetricCard'
 import PageHeader from '@/components/ui/PageHeader'
 import StepProgress from '@/components/layout/StepProgress'
-import type { AllocationDecision, AllocationResult } from '@/lib/types'
+import type { AllocationDecision, AllocationResult, ParetoPoint } from '@/lib/types'
 
 const Plot = dynamic(() => import('react-plotly.js'), { ssr: false })
 
@@ -148,9 +148,14 @@ export default function PlanPage() {
   const [cost, setCost] = useState(0.15)
   const [unmet, setUnmet] = useState(15)
   const [risk, setRisk] = useState(5)
+  const [carbon, setCarbon] = useState(0)
 
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  const [paretoPoints, setParetoPoints] = useState<ParetoPoint[]>([])
+  const [paretoLoading, setParetoLoading] = useState(false)
+  const [paretoError, setParetoError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!state) {
@@ -170,13 +175,27 @@ export default function PlanPage() {
     try {
       const result = await api.optimize({
         state,
-        lambda_weights: { spoilage, cost, unmet, risk },
+        lambda_weights: { spoilage, cost, unmet, risk, carbon },
       })
       setOptimizeResult(result)
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Optimization failed')
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function runPareto() {
+    if (!state) return
+    setParetoLoading(true)
+    setParetoError(null)
+    try {
+      const out = await api.fetchPareto({ state, resolution: 5 })
+      setParetoPoints(out.points)
+    } catch (e: unknown) {
+      setParetoError(e instanceof Error ? e.message : 'Pareto sweep failed')
+    } finally {
+      setParetoLoading(false)
     }
   }
 
@@ -252,7 +271,20 @@ export default function PlanPage() {
               step={0.1}
               onChange={setRisk}
             />
+            <SliderRow
+              label="Carbon weight (λ₅)"
+              value={carbon}
+              min={0}
+              max={5}
+              step={0.1}
+              onChange={setCarbon}
+            />
           </div>
+          {carbon > 0 && (
+            <div className="text-xs text-[var(--text-3)] bg-green-950/30 border border-green-900/40 rounded px-3 py-2">
+              🌿 Carbon penalty active — optimizer penalizes high-emission routes (refrigerated truck: 0.9 kg CO₂/km)
+            </div>
+          )}
         </div>
 
         {error && (
@@ -295,7 +327,7 @@ export default function PlanPage() {
       {result && (
         <div className="space-y-6">
           {/* Metric cards */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
             <MetricCard
               label="Dispatched"
               value={result.total_dispatched.toLocaleString(undefined, { maximumFractionDigits: 0 })}
@@ -315,6 +347,12 @@ export default function PlanPage() {
             <MetricCard
               label="Transport Cost"
               value={`$${result.total_transport_cost.toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
+            />
+            <MetricCard
+              label="CO₂ Emissions"
+              value={`${result.total_co2_kg.toLocaleString(undefined, { maximumFractionDigits: 0 })} kg`}
+              unit="total carbon"
+              status={result.total_co2_kg < 5000 ? 'good' : result.total_co2_kg < 10000 ? 'warn' : 'bad'}
             />
           </div>
 
@@ -452,6 +490,85 @@ export default function PlanPage() {
               </div>
             </div>
           )}
+
+          {/* Pareto Frontier */}
+          <div className="bg-[var(--surface)] border border-[var(--border)] rounded-md p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-xs font-semibold uppercase tracking-wider text-[var(--text-3)]">Pareto Frontier Explorer</div>
+                <div className="text-xs text-[var(--text-3)] mt-0.5">
+                  Sweep spoilage ↔ cost trade-off space — each point is a Pareto-optimal solution
+                </div>
+              </div>
+              <button
+                onClick={runPareto}
+                disabled={paretoLoading}
+                className="h-7 px-3 text-xs font-semibold bg-[var(--surface-2)] border border-[var(--border-2)] text-[var(--text-2)] rounded hover:border-[var(--accent)] hover:text-[var(--accent)] transition-colors duration-150 disabled:opacity-40"
+              >
+                {paretoLoading ? 'Computing...' : '⬡ Compute Pareto'}
+              </button>
+            </div>
+
+            {paretoError && <div className="text-xs text-red-400">{paretoError}</div>}
+
+            {paretoPoints.length > 0 && (
+              <>
+                <div className="bg-[var(--surface-2)] border border-[var(--border)] rounded-md overflow-hidden">
+                  <Plot
+                    data={[
+                      {
+                        type: 'scatter' as const,
+                        mode: 'markers+lines' as const,
+                        x: paretoPoints.map((p) => p.spoilage_pct),
+                        y: paretoPoints.map((p) => p.total_cost),
+                        marker: {
+                          size: 10,
+                          color: paretoPoints.map((p) => p.total_co2_kg),
+                          colorscale: 'YlOrRd',
+                          showscale: true,
+                          colorbar: {
+                            title: 'CO₂ (kg)',
+                            titlefont: { color: '#6b8c70', size: 10 },
+                            tickfont: { color: '#6b8c70', size: 9 },
+                            len: 0.6,
+                          },
+                        },
+                        line: { color: '#22c55e', width: 1, dash: 'dot' },
+                        text: paretoPoints.map((p) =>
+                          `λ_sp=${p.lambda_spoilage.toFixed(1)}, λ_cost=${p.lambda_cost.toFixed(2)}<br>` +
+                          `Spoilage: ${p.spoilage_pct.toFixed(1)}%<br>` +
+                          `Cost: $${p.total_cost.toFixed(0)}<br>` +
+                          `CO₂: ${p.total_co2_kg.toFixed(0)} kg<br>` +
+                          `Fulfillment: ${p.fulfillment_pct.toFixed(1)}%`
+                        ),
+                        hoverinfo: 'text' as const,
+                        name: 'Pareto Front',
+                      },
+                    ]}
+                    layout={{
+                      ...LAYOUT_BASE,
+                      height: 320,
+                      xaxis: {
+                        ...LAYOUT_BASE.xaxis,
+                        title: { text: 'Spoilage %', font: { color: '#6b8c70', size: 10 } },
+                        ticksuffix: '%',
+                      },
+                      yaxis: {
+                        ...LAYOUT_BASE.yaxis,
+                        title: { text: 'Transport Cost ($)', font: { color: '#6b8c70', size: 10 } },
+                      },
+                      showlegend: false,
+                    } as any}
+                    config={PLOT_CONFIG}
+                    style={{ width: '100%' }}
+                  />
+                </div>
+                <div className="text-xs text-[var(--text-3)]">
+                  {paretoPoints.length} Pareto-optimal solutions · marker color = CO₂ emissions · hover for full details
+                </div>
+              </>
+            )}
+          </div>
         </div>
       )}
     </div>

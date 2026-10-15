@@ -2,6 +2,8 @@
 @tailwind components;
 @tailwind utilities;
 
+@import 'leaflet/dist/leaflet.css';
+
 /* ── Dark mode (default) ── */
 :root {
   --bg: #090d0a;

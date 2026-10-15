@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import dynamic from 'next/dynamic'
 import * as Select from '@radix-ui/react-select'
 
 import { useStore } from '@/lib/store'
@@ -11,8 +10,7 @@ import type { SimulateOut } from '@/lib/types'
 import MetricCard from '@/components/ui/MetricCard'
 import PageHeader from '@/components/ui/PageHeader'
 import StepProgress from '@/components/layout/StepProgress'
-
-const Plot = dynamic(() => import('react-plotly.js'), { ssr: false })
+import NetworkMap from '@/components/ui/NetworkMap'
 
 const WORKFLOW_STEPS = ['Configure', 'Plan', 'Simulate', 'Re-Optimize']
 
@@ -56,15 +54,6 @@ function SelectItem({ value, children }: { value: string; children: React.ReactN
   )
 }
 
-const PLOTLY_LAYOUT_BASE = {
-  paper_bgcolor: 'transparent',
-  plot_bgcolor: 'transparent',
-  font: { color: '#6b8c70', family: 'var(--font-geist-mono), monospace', size: 11 },
-  margin: { l: 40, r: 20, t: 32, b: 40 },
-  xaxis: { gridcolor: '#1c2b1e', linecolor: '#1c2b1e', zerolinecolor: '#1c2b1e' },
-  yaxis: { gridcolor: '#1c2b1e', linecolor: '#1c2b1e', zerolinecolor: '#1c2b1e' },
-  legend: { bgcolor: 'transparent' },
-}
 
 export default function SimulatePage() {
   const { state, optimizeResult, disruptedState, disruptionDesc, setState, setDisruptedState } = useStore()
@@ -123,115 +112,9 @@ export default function SimulatePage() {
     }
   }
 
-  // Build network chart data from disrupted state
-  function buildNetworkChart() {
-    const s = disruptedState
-    if (!s) return null
-
-    const farmX: number[] = []
-    const farmY: number[] = []
-    const farmText: string[] = []
-
-    Object.values(s.farms).forEach((f) => {
-      farmX.push(f.location_x)
-      farmY.push(f.location_y)
-      farmText.push(f.farm_id)
-    })
-
-    const storX: number[] = []
-    const storY: number[] = []
-    const storText: string[] = []
-    const storColor: string[] = []
-
-    Object.values(s.storage_facilities).forEach((sf) => {
-      storX.push(sf.location_x)
-      storY.push(sf.location_y)
-      storText.push(sf.storage_id)
-      storColor.push(sf.available ? '#3b82f6' : '#ef4444')
-    })
-
-    const mktX: number[] = []
-    const mktY: number[] = []
-    const mktText: string[] = []
-
-    Object.values(s.markets).forEach((m) => {
-      mktX.push(m.location_x)
-      mktY.push(m.location_y)
-      mktText.push(m.market_id)
-    })
-
-    // Route lines
-    const routeShapes: Partial<Plotly.Shape>[] = []
-    Object.values(s.routes).forEach((r) => {
-      // Find endpoints
-      const allNodes: Record<string, { x: number; y: number }> = {}
-      Object.values(s.farms).forEach((f) => { allNodes[f.farm_id] = { x: f.location_x, y: f.location_y } })
-      Object.values(s.storage_facilities).forEach((sf) => { allNodes[sf.storage_id] = { x: sf.location_x, y: sf.location_y } })
-      Object.values(s.markets).forEach((m) => { allNodes[m.market_id] = { x: m.location_x, y: m.location_y } })
-
-      const src = allNodes[r.source]
-      const dst = allNodes[r.destination]
-      if (!src || !dst) return
-
-      routeShapes.push({
-        type: 'line',
-        x0: src.x, y0: src.y,
-        x1: dst.x, y1: dst.y,
-        line: {
-          color: r.available ? '#1c2b1e' : '#ef444480',
-          width: r.available ? 1 : 2,
-          dash: r.available ? 'solid' : 'dot',
-        },
-      })
-    })
-
-    const data: Partial<Plotly.PlotData>[] = [
-      {
-        type: 'scatter',
-        mode: 'markers+text',
-        name: 'Farms',
-        x: farmX,
-        y: farmY,
-        text: farmText,
-        textposition: 'top center',
-        marker: { color: '#22c55e', size: 10, symbol: 'square' },
-      },
-      {
-        type: 'scatter',
-        mode: 'markers+text',
-        name: 'Storage',
-        x: storX,
-        y: storY,
-        text: storText,
-        textposition: 'top center',
-        marker: { color: storColor, size: 10, symbol: 'diamond' },
-      },
-      {
-        type: 'scatter',
-        mode: 'markers+text',
-        name: 'Markets',
-        x: mktX,
-        y: mktY,
-        text: mktText,
-        textposition: 'top center',
-        marker: { color: '#f59e0b', size: 10, symbol: 'circle' },
-      },
-    ]
-
-    const layout = {
-      ...PLOTLY_LAYOUT_BASE,
-      title: { text: 'Disrupted Network State', font: { color: '#6b8c70', size: 12 }, x: 0.02 },
-      shapes: routeShapes,
-      showlegend: true,
-    }
-
-    return { data, layout }
-  }
-
-  const networkChart = buildNetworkChart()
   const targetOptions = getTargetOptions()
 
-  const completedSteps = optimizeResult ? [0, 1] : disruptedState ? [0, 1, 2] : optimizeResult ? [0, 1] : []
+  const completedSteps = optimizeResult ? [0, 1] : []
 
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-6">
@@ -377,25 +260,22 @@ export default function SimulatePage() {
                 />
               </div>
 
-              {/* Network chart */}
-              {networkChart && (
-                <div className="space-y-2">
-                  <div className="text-xs font-semibold uppercase tracking-wider text-[var(--text-3)]">
-                    Disrupted Network
-                  </div>
-                  <div className="bg-[var(--surface)] border border-[var(--border)] rounded-md overflow-hidden">
-                    <Plot
-                      data={networkChart.data as any}
-                      layout={networkChart.layout as any}
-                      config={{ displayModeBar: false, responsive: true }}
-                      style={{ width: '100%' }}
-                    />
-                  </div>
-                  <div className="text-xs text-[var(--text-3)]">
-                    Red markers = offline storage. Dashed red lines = closed routes.
-                  </div>
+              {/* Disrupted Network Map */}
+              <div className="space-y-2">
+                <div className="text-xs font-semibold uppercase tracking-wider text-[var(--text-3)]">
+                  Disrupted Network
                 </div>
-              )}
+                <div className="border border-[var(--border)] rounded-md overflow-hidden">
+                  <NetworkMap state={disruptedState} height="380px" />
+                </div>
+                <div className="flex gap-4 text-[10px] text-[var(--text-3)]">
+                  <span><span className="inline-block w-2 h-2 rounded-full bg-green-400 mr-1" />Farm</span>
+                  <span><span className="inline-block w-2 h-2 rounded-full bg-blue-400 mr-1" />Storage (active)</span>
+                  <span><span className="inline-block w-2 h-2 rounded-full bg-red-500 mr-1" />Storage (offline)</span>
+                  <span><span className="inline-block w-2 h-2 rounded-full bg-amber-400 mr-1" />Market</span>
+                  <span className="ml-auto">Dashed red lines = closed routes</span>
+                </div>
+              </div>
 
               {/* Info note */}
               <div className="bg-[var(--surface)] border border-[var(--border)] rounded-md p-4 flex items-start justify-between gap-4">

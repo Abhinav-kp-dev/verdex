@@ -31,6 +31,8 @@ class FarmOut(BaseModel):
     farm_id: str
     location_x: float
     location_y: float
+    lat: float
+    lon: float
     available_quantity: float
     harvest_time: float
 
@@ -39,6 +41,8 @@ class StorageFacilityOut(BaseModel):
     storage_id: str
     location_x: float
     location_y: float
+    lat: float
+    lon: float
     capacity: float
     current_load: float
     temperature_capacity: float
@@ -49,6 +53,8 @@ class MarketOut(BaseModel):
     market_id: str
     location_x: float
     location_y: float
+    lat: float
+    lon: float
     demand: float
     priority: float
 
@@ -62,6 +68,7 @@ class TransportRouteOut(BaseModel):
     transport_cost_per_unit: float
     available: bool
     risk_factor: float
+    co2_kg_per_km: float = 0.9
 
 
 class BatchOut(BaseModel):
@@ -134,6 +141,20 @@ class AllocationResultOut(BaseModel):
     is_feasible: bool
     objective_value: float = 0.0
     extra_metrics: Dict[str, Any] = Field(default_factory=dict)
+    total_co2_kg: float = 0.0
+
+
+class ParetoPointOut(BaseModel):
+    lambda_spoilage: float
+    lambda_cost: float
+    spoilage_pct: float
+    total_cost: float
+    fulfillment_pct: float
+    total_co2_kg: float
+
+
+class ParetoOut(BaseModel):
+    points: List[ParetoPointOut]
 
 
 # ---------------------------------------------------------------------------
@@ -145,6 +166,7 @@ class LambdaWeightsIn(BaseModel):
     cost: float = 0.15
     unmet: float = 15.0
     risk: float = 5.0
+    carbon: float = 0.0
 
 
 class RegenerateIn(BaseModel):
@@ -204,6 +226,8 @@ def state_to_schema(state: SupplyChainState) -> SupplyChainStateOut:
             farm_id=farm.farm_id,
             location_x=farm.location[0],
             location_y=farm.location[1],
+            lat=farm.location[0],
+            lon=farm.location[1],
             available_quantity=farm.available_quantity,
             harvest_time=farm.harvest_time,
         )
@@ -214,6 +238,8 @@ def state_to_schema(state: SupplyChainState) -> SupplyChainStateOut:
             storage_id=sf.storage_id,
             location_x=sf.location[0],
             location_y=sf.location[1],
+            lat=sf.location[0],
+            lon=sf.location[1],
             capacity=sf.capacity,
             current_load=sf.current_load,
             temperature_capacity=sf.temperature_capacity,
@@ -226,6 +252,8 @@ def state_to_schema(state: SupplyChainState) -> SupplyChainStateOut:
             market_id=market.market_id,
             location_x=market.location[0],
             location_y=market.location[1],
+            lat=market.location[0],
+            lon=market.location[1],
             demand=market.demand,
             priority=market.priority,
         )
@@ -241,6 +269,7 @@ def state_to_schema(state: SupplyChainState) -> SupplyChainStateOut:
             transport_cost_per_unit=route.transport_cost_per_unit,
             available=route.available,
             risk_factor=route.risk_factor,
+            co2_kg_per_km=route.co2_kg_per_km,
         )
 
     batches_out: Dict[str, BatchOut] = {}
@@ -322,6 +351,7 @@ def schema_to_state(s: SupplyChainStateOut) -> SupplyChainState:
             transport_cost_per_unit=r.transport_cost_per_unit,
             available=r.available,
             risk_factor=r.risk_factor,
+            co2_kg_per_km=r.co2_kg_per_km,
         )
 
     batches: Dict[str, Batch] = {}

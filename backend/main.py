@@ -21,6 +21,7 @@ from backend.routers import simulate as simulate_router
 from backend.routers import reoptimize as reoptimize_router
 from backend.routers import reports as reports_router
 from backend.routers import data as data_router
+from backend.routers import weather as weather_router
 
 app = FastAPI(
     title="FreshRoute API",
@@ -48,3 +49,4 @@ app.include_router(simulate_router.router, prefix="/api/simulate", tags=["simula
 app.include_router(reoptimize_router.router, prefix="/api/reoptimize", tags=["reoptimize"])
 app.include_router(reports_router.router, prefix="/api/reports", tags=["reports"])
 app.include_router(data_router.router, prefix="/api/data", tags=["data"])
+app.include_router(weather_router.router, prefix="/api/weather", tags=["weather"])

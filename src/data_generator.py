@@ -1,7 +1,8 @@
 """Synthetic Supply-Chain Network and Batch Data Generator.
 
-Generates reproducible, realistic perishable logistics instances across arbitrary scales
-(10 to 500+ batches) with realistic spatial geometry, transit times, shelf lives, and capacities.
+Uses real Indian city coordinates for a geographically accurate network.
+Farms in agricultural belts, cold storage hubs at logistics centres,
+markets at major urban consumption centres.
 """
 
 import math
@@ -19,16 +20,50 @@ from src.models import (
 
 
 COMMODITY_PROFILES = {
-    "Berries": {"shelf_life_min": 24.0, "shelf_life_max": 48.0, "ideal_temp": 2.0},
-    "Leafy Greens": {"shelf_life_min": 36.0, "shelf_life_max": 72.0, "ideal_temp": 4.0},
-    "Tomatoes": {"shelf_life_min": 72.0, "shelf_life_max": 144.0, "ideal_temp": 12.0},
-    "Peaches": {"shelf_life_min": 48.0, "shelf_life_max": 96.0, "ideal_temp": 4.0},
-    "Apples": {"shelf_life_min": 168.0, "shelf_life_max": 336.0, "ideal_temp": 4.0},
+    "Berries":      {"shelf_life_min": 24.0,  "shelf_life_max": 48.0,  "ideal_temp": 2.0},
+    "Leafy Greens": {"shelf_life_min": 36.0,  "shelf_life_max": 72.0,  "ideal_temp": 4.0},
+    "Tomatoes":     {"shelf_life_min": 72.0,  "shelf_life_max": 144.0, "ideal_temp": 12.0},
+    "Peaches":      {"shelf_life_min": 48.0,  "shelf_life_max": 96.0,  "ideal_temp": 4.0},
+    "Apples":       {"shelf_life_min": 168.0, "shelf_life_max": 336.0, "ideal_temp": 4.0},
 }
 
+# Fixed Indian city coordinates: (lat, lon, city_name, state)
+FARM_NODES = [
+    (20.0059, 73.7898, "Nashik",  "Maharashtra"),   # grapes, onions, leafy greens
+    (13.1357, 78.1294, "Kolar",   "Karnataka"),      # tomatoes, berries
+    (16.3067, 80.4365, "Guntur",  "Andhra Pradesh"), # chillies, leafy greens
+]
 
-def euclidean_distance(loc1: Tuple[float, float], loc2: Tuple[float, float]) -> float:
-    return math.sqrt((loc1[0] - loc2[0]) ** 2 + (loc1[1] - loc2[1]) ** 2)
+STORAGE_NODES = [
+    (18.5204, 73.8567, "Pune",      "Maharashtra"),  # hub between Nashik and Mumbai
+    (12.9716, 77.5946, "Bengaluru", "Karnataka"),    # hub between Kolar and Chennai
+]
+
+MARKET_NODES = [
+    (19.0760, 72.8777, "Mumbai",    "Maharashtra"),
+    (13.0827, 80.2707, "Chennai",   "Tamil Nadu"),
+    (17.3850, 78.4867, "Hyderabad", "Telangana"),
+]
+
+# CO2 emission factors (kg per km)
+CO2_REFRIGERATED = 0.9   # cold-chain refrigerated truck
+CO2_AMBIENT      = 0.35  # ambient / express van (direct routes)
+
+
+def haversine_km(loc1: Tuple[float, float], loc2: Tuple[float, float]) -> float:
+    """Great-circle distance in km between two (lat, lon) points."""
+    R = 6371.0
+    lat1, lon1 = math.radians(loc1[0]), math.radians(loc1[1])
+    lat2, lon2 = math.radians(loc2[0]), math.radians(loc2[1])
+    dlat = lat2 - lat1
+    dlon = lon2 - lon1
+    a = math.sin(dlat / 2) ** 2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2) ** 2
+    return 2 * R * math.asin(math.sqrt(a))
+
+
+def road_km(loc1: Tuple[float, float], loc2: Tuple[float, float]) -> float:
+    """Approximate road distance: haversine × 1.3 (Indian highway winding factor)."""
+    return haversine_km(loc1, loc2) * 1.3
 
 
 def generate_supply_chain(
@@ -38,81 +73,100 @@ def generate_supply_chain(
     num_batches: int = 10,
     num_trucks: int = 5,
     seed: int = 42,
-    area_size_km: float = 300.0,
-    avg_speed_kmh: float = 50.0,
+    area_size_km: float = 300.0,   # unused — kept for API compatibility
+    avg_speed_kmh: float = 55.0,
 ) -> SupplyChainState:
-    """Generates a complete, consistent supply chain network and batch state.
+    """Generates a supply chain network using real Indian city coordinates.
 
-    Spatial layout:
-    - Farms generated primarily on the western/northern perimeter (rural source)
-    - Cold storage facilities situated strategically in intermediate hub zones
-    - Markets situated towards urban centers (eastern/southern zones)
+    Farms  : agricultural belts (Nashik, Kolar, Guntur)
+    Storage: logistics hubs    (Pune, Bengaluru)
+    Markets: urban centres     (Mumbai, Chennai, Hyderabad)
     """
     rng = random.Random(seed)
 
-    # 1. Generate Farms
+    # ── 1. Farms ──────────────────────────────────────────────────────────────
     farms: Dict[str, Farm] = {}
-    for i in range(num_farms):
-        fid = f"F{i+1}"
-        loc = (rng.uniform(10.0, area_size_km * 0.35), rng.uniform(20.0, area_size_km * 0.9))
+    for i in range(min(num_farms, len(FARM_NODES))):
+        fid = f"F{i + 1}"
+        lat, lon, city, state = FARM_NODES[i]
         farms[fid] = Farm(
             farm_id=fid,
-            location=loc,
-            available_quantity=0.0,  # Will be aggregated from batches
+            location=(lat, lon),
+            available_quantity=0.0,
             harvest_time=0.0,
         )
+    # Extra farms beyond the fixed list get random offsets around known agricultural zones
+    for i in range(len(FARM_NODES), num_farms):
+        fid = f"F{i + 1}"
+        base = FARM_NODES[i % len(FARM_NODES)]
+        lat = base[0] + rng.uniform(-1.5, 1.5)
+        lon = base[1] + rng.uniform(-1.5, 1.5)
+        farms[fid] = Farm(farm_id=fid, location=(lat, lon), available_quantity=0.0, harvest_time=0.0)
 
-    # 2. Generate Storage Facilities (Hubs)
+    # ── 2. Storage Facilities ─────────────────────────────────────────────────
     storages: Dict[str, StorageFacility] = {}
-    for j in range(num_storage):
-        sid = f"S{j+1}"
-        loc = (
-            rng.uniform(area_size_km * 0.4, area_size_km * 0.65),
-            rng.uniform(area_size_km * 0.25, area_size_km * 0.75),
-        )
+    for j in range(min(num_storage, len(STORAGE_NODES))):
+        sid = f"S{j + 1}"
+        lat, lon, city, state = STORAGE_NODES[j]
         storages[sid] = StorageFacility(
             storage_id=sid,
-            location=loc,
+            location=(lat, lon),
             capacity=round(rng.uniform(8000.0, 20000.0), -2),
             current_load=0.0,
             temperature_capacity=4.0,
             available=True,
         )
-
-    # 3. Generate Markets (Demand sinks)
-    markets: Dict[str, Market] = {}
-    total_est_supply = num_batches * 1200.0  # approximate scale
-    demand_per_market = round(total_est_supply / max(1, num_markets), -1)
-
-    for k in range(num_markets):
-        mid = f"M{k+1}"
-        loc = (rng.uniform(area_size_km * 0.7, area_size_km * 0.95), rng.uniform(20.0, area_size_km * 0.9))
-        # Add variance to demand
-        m_demand = max(500.0, round(rng.uniform(0.7, 1.3) * demand_per_market, -1))
-        priority = round(rng.choice([1.0, 1.2, 1.5]), 1)
-        markets[mid] = Market(
-            market_id=mid,
-            location=loc,
-            demand=m_demand,
-            priority=priority,
+    for j in range(len(STORAGE_NODES), num_storage):
+        sid = f"S{j + 1}"
+        base = STORAGE_NODES[j % len(STORAGE_NODES)]
+        lat = base[0] + rng.uniform(-1.0, 1.0)
+        lon = base[1] + rng.uniform(-1.0, 1.0)
+        storages[sid] = StorageFacility(
+            storage_id=sid, location=(lat, lon),
+            capacity=round(rng.uniform(8000.0, 20000.0), -2),
+            current_load=0.0, temperature_capacity=4.0, available=True,
         )
 
-    # 4. Generate Batches
+    # ── 3. Markets ────────────────────────────────────────────────────────────
+    markets: Dict[str, Market] = {}
+    total_est_supply = num_batches * 1200.0
+    demand_per_market = round(total_est_supply / max(1, num_markets), -1)
+
+    for k in range(min(num_markets, len(MARKET_NODES))):
+        mid = f"M{k + 1}"
+        lat, lon, city, state = MARKET_NODES[k]
+        m_demand = max(500.0, round(rng.uniform(0.7, 1.3) * demand_per_market, -1))
+        markets[mid] = Market(
+            market_id=mid,
+            location=(lat, lon),
+            demand=m_demand,
+            priority=round(rng.choice([1.0, 1.2, 1.5]), 1),
+        )
+    for k in range(len(MARKET_NODES), num_markets):
+        mid = f"M{k + 1}"
+        base = MARKET_NODES[k % len(MARKET_NODES)]
+        lat = base[0] + rng.uniform(-1.0, 1.0)
+        lon = base[1] + rng.uniform(-1.0, 1.0)
+        m_demand = max(500.0, round(rng.uniform(0.7, 1.3) * demand_per_market, -1))
+        markets[mid] = Market(
+            market_id=mid, location=(lat, lon),
+            demand=m_demand, priority=round(rng.choice([1.0, 1.2, 1.5]), 1),
+        )
+
+    # ── 4. Batches ────────────────────────────────────────────────────────────
     batches: Dict[str, Batch] = {}
     farm_ids = list(farms.keys())
     commodities = list(COMMODITY_PROFILES.keys())
 
     for b in range(num_batches):
-        bid = f"B{b+1:02d}"
+        bid = f"B{b + 1:02d}"
         fid = farm_ids[b % len(farm_ids)]
         comm = rng.choice(commodities)
         prof = COMMODITY_PROFILES[comm]
 
         initial_shelf = rng.uniform(prof["shelf_life_min"], prof["shelf_life_max"])
-        # Some batches are freshly harvested, others have spent some hours at farm
         age_hours = rng.uniform(0.0, initial_shelf * 0.4)
         rem_shelf = max(4.0, initial_shelf - age_hours)
-
         qty = round(rng.uniform(500.0, 2500.0), -1)
         ambient_temp = round(rng.uniform(18.0, 30.0), 1)
 
@@ -129,75 +183,58 @@ def generate_supply_chain(
         )
         farms[fid].available_quantity += qty
 
-    # 5. Generate Transport Routes
-    # Routes exist between:
-    # (a) Farms -> Storage facilities
-    # (b) Storage facilities -> Markets
-    # (c) Direct Farms -> Markets (express / high-cost routes)
+    # ── 5. Routes ─────────────────────────────────────────────────────────────
     routes: Dict[str, TransportRoute] = {}
-    route_counter = 1
 
-    # (a) Farm -> Storage
+    # (a) Farm → Storage (refrigerated cold-chain)
     for fid, farm in farms.items():
         for sid, storage in storages.items():
-            dist = euclidean_distance(farm.location, storage.location)
+            dist = road_km(farm.location, storage.location)
             tt = dist / avg_speed_kmh
-            cost_per_kg = round(0.0008 * dist + rng.uniform(0.02, 0.05), 4)
-            rid = f"R_F{fid[-1]}_S{sid[-1]}"
+            cost = round(0.0008 * dist + rng.uniform(0.02, 0.05), 4)
+            rid = f"R_{fid}_S{sid[-1]}"
             routes[rid] = TransportRoute(
-                route_id=rid,
-                source=fid,
-                destination=sid,
-                distance_km=round(dist, 1),
-                travel_time_hours=round(tt, 2),
-                transport_cost_per_unit=cost_per_kg,
-                available=True,
+                route_id=rid, source=fid, destination=sid,
+                distance_km=round(dist, 1), travel_time_hours=round(tt, 2),
+                transport_cost_per_unit=cost, available=True,
                 risk_factor=round(rng.uniform(0.05, 0.20), 2),
+                co2_kg_per_km=CO2_REFRIGERATED,
             )
-            route_counter += 1
 
-    # (b) Storage -> Market
+    # (b) Storage → Market (refrigerated last-mile)
     for sid, storage in storages.items():
         for mid, market in markets.items():
-            dist = euclidean_distance(storage.location, market.location)
+            dist = road_km(storage.location, market.location)
             tt = dist / avg_speed_kmh
-            cost_per_kg = round(0.0008 * dist + rng.uniform(0.02, 0.05), 4)
-            rid = f"R_S{sid[-1]}_M{mid[-1]}"
+            cost = round(0.0008 * dist + rng.uniform(0.02, 0.05), 4)
+            rid = f"R_S{sid[-1]}_{mid}"
             routes[rid] = TransportRoute(
-                route_id=rid,
-                source=sid,
-                destination=mid,
-                distance_km=round(dist, 1),
-                travel_time_hours=round(tt, 2),
-                transport_cost_per_unit=cost_per_kg,
-                available=True,
+                route_id=rid, source=sid, destination=mid,
+                distance_km=round(dist, 1), travel_time_hours=round(tt, 2),
+                transport_cost_per_unit=cost, available=True,
                 risk_factor=round(rng.uniform(0.05, 0.20), 2),
+                co2_kg_per_km=CO2_REFRIGERATED,
             )
-            route_counter += 1
 
-    # (c) Direct Farm -> Market (Express routes, ~1.5x cost, slightly higher road risk)
+    # (c) Direct Farm → Market (express, ambient, lower CO2)
     for fid, farm in farms.items():
         for mid, market in markets.items():
-            dist = euclidean_distance(farm.location, market.location)
-            tt = dist / (avg_speed_kmh * 1.1)  # Faster express transit
-            cost_per_kg = round(0.0012 * dist + rng.uniform(0.05, 0.10), 4)
-            rid = f"R_DIR_F{fid[-1]}_M{mid[-1]}"
+            dist = road_km(farm.location, market.location)
+            tt = dist / (avg_speed_kmh * 1.1)
+            cost = round(0.0012 * dist + rng.uniform(0.05, 0.10), 4)
+            rid = f"R_DIR_{fid}_{mid}"
             routes[rid] = TransportRoute(
-                route_id=rid,
-                source=fid,
-                destination=mid,
-                distance_km=round(dist, 1),
-                travel_time_hours=round(tt, 2),
-                transport_cost_per_unit=cost_per_kg,
-                available=True,
+                route_id=rid, source=fid, destination=mid,
+                distance_km=round(dist, 1), travel_time_hours=round(tt, 2),
+                transport_cost_per_unit=cost, available=True,
                 risk_factor=round(rng.uniform(0.12, 0.35), 2),
+                co2_kg_per_km=CO2_AMBIENT,
             )
-            route_counter += 1
 
-    # 6. Generate Trucks / Fleet
+    # ── 6. Trucks ─────────────────────────────────────────────────────────────
     trucks: Dict[str, Truck] = {}
     for t in range(num_trucks):
-        tid = f"T{t+1}"
+        tid = f"T{t + 1}"
         trucks[tid] = Truck(
             truck_id=tid,
             capacity=round(rng.choice([4000.0, 6000.0, 8000.0, 10000.0]), -2),

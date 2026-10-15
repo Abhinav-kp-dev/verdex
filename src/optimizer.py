@@ -84,6 +84,7 @@ class DynamicPerishableOptimizer:
         lambda_cost: float = 0.15,
         lambda_unmet_demand: float = 15.0,
         lambda_risk: float = 5.0,
+        lambda_carbon: float = 0.0,
         time_limit_seconds: float = 30.0,
     ) -> None:
         """Initialises the optimizer with objective weights and a spoilage model.
@@ -106,6 +107,7 @@ class DynamicPerishableOptimizer:
         self.lambda_cost = float(lambda_cost)
         self.lambda_unmet_demand = float(lambda_unmet_demand)
         self.lambda_risk = float(lambda_risk)
+        self.lambda_carbon = float(lambda_carbon)
         self.time_limit_seconds = float(time_limit_seconds)
 
     @classmethod
@@ -196,6 +198,7 @@ class DynamicPerishableOptimizer:
                     "route_temp": batch.temperature,
                     "route_risk": r.risk_factor,
                     "route_ids": [r.route_id],
+                    "co2_cost": r.co2_kg_per_km * r.distance_km,
                 })
 
             # ── (b) Hub Farm → Storage → Market paths ───────────────────────
@@ -223,6 +226,7 @@ class DynamicPerishableOptimizer:
                         "route_temp": storage.temperature_capacity,
                         "route_risk": (r1.risk_factor + r2.risk_factor) / 2.0,
                         "route_ids": [r1.route_id, r2.route_id],
+                        "co2_cost": r1.co2_kg_per_km * r1.distance_km + r2.co2_kg_per_km * r2.distance_km,
                     })
 
         return paths
@@ -305,10 +309,12 @@ class DynamicPerishableOptimizer:
         # ── Objective vector ─────────────────────────────────────────────────
         c = np.empty(total_vars, dtype=np.float64)
         unit_costs = np.array([p["unit_cost"] for p in paths], dtype=np.float64)
+        co2_costs = np.array([p.get("co2_cost", 0.0) for p in paths], dtype=np.float64)
         c[:P] = (
             self.lambda_spoilage * spoil_fracs
             + self.lambda_cost * unit_costs
             + self.lambda_risk * combined_risks
+            + self.lambda_carbon * co2_costs
         )
         for m_id, m_i in market_idx.items():
             c[P + m_i] = self.lambda_unmet_demand * state.markets[m_id].priority

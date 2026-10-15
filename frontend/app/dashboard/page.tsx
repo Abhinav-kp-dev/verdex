@@ -1,32 +1,30 @@
 'use client'
 
-import { useEffect } from 'react'
-import dynamic from 'next/dynamic'
+import { useEffect, useState, useCallback } from 'react'
 import { useStore } from '@/lib/store'
 import * as api from '@/lib/api'
 import MetricCard from '@/components/ui/MetricCard'
 import PageHeader from '@/components/ui/PageHeader'
 import StatusBadge from '@/components/ui/StatusBadge'
-import type { Batch, Farm, Market, StorageFacility, TransportRoute } from '@/lib/types'
-
-const Plot = dynamic(() => import('react-plotly.js'), { ssr: false })
-
-const PLOTLY_LAYOUT_BASE = {
-  paper_bgcolor: 'transparent',
-  plot_bgcolor: 'transparent',
-  font: { color: '#6b8c70', family: 'var(--font-geist-mono), monospace', size: 11 },
-  margin: { l: 40, r: 20, t: 32, b: 40 },
-  xaxis: { gridcolor: '#1c2b1e', linecolor: '#1c2b1e', zerolinecolor: '#1c2b1e' },
-  yaxis: { gridcolor: '#1c2b1e', linecolor: '#1c2b1e', zerolinecolor: '#1c2b1e' },
-  legend: { bgcolor: 'transparent' },
-}
+import NetworkMap from '@/components/ui/NetworkMap'
+import type { Batch, NodeWeather, WeatherRiskOut } from '@/lib/types'
 
 function fmt(n: number): string {
   return n.toLocaleString('en-US', { maximumFractionDigits: 0 })
 }
 
+function batchStatus(b: Batch): { label: string; status: 'bad' | 'warn' | 'good' } {
+  if (b.remaining_shelf_life_hours < 24) return { label: 'Urgent', status: 'bad' }
+  if (b.remaining_shelf_life_hours < 48) return { label: 'Ship Soon', status: 'warn' }
+  return { label: 'Fresh', status: 'good' }
+}
+
 export default function DashboardPage() {
   const { state, setState } = useStore()
+  const [weatherRisk, setWeatherRisk] = useState<WeatherRiskOut | null>(null)
+  const [weatherLoading, setWeatherLoading] = useState(false)
+  const [weatherApplying, setWeatherApplying] = useState(false)
+  const [weatherError, setWeatherError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!state) {
@@ -34,109 +32,46 @@ export default function DashboardPage() {
     }
   }, [state, setState])
 
-  // Derived metrics
+  const fetchWeather = useCallback(async () => {
+    if (!state) return
+    setWeatherLoading(true)
+    setWeatherError(null)
+    try {
+      const risk = await api.fetchWeatherRisk(state)
+      setWeatherRisk(risk)
+    } catch {
+      setWeatherError('Failed to fetch weather data')
+    } finally {
+      setWeatherLoading(false)
+    }
+  }, [state])
+
+  useEffect(() => {
+    if (state) fetchWeather()
+  }, [state]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function applyWeatherDisruption() {
+    if (!state) return
+    setWeatherApplying(true)
+    try {
+      const result = await api.applyWeatherDisruption(state)
+      setState(result.disrupted_state)
+      setWeatherRisk(null)
+    } catch {
+      setWeatherError('Failed to apply weather disruption')
+    } finally {
+      setWeatherApplying(false)
+    }
+  }
+
   const batches = state ? Object.values(state.batches) : []
   const farms = state ? Object.values(state.farms) : []
   const markets = state ? Object.values(state.markets) : []
-  const storage = state ? Object.values(state.storage_facilities) : []
-  const routes = state ? Object.values(state.routes) : []
 
   const totalSupply = batches.reduce((s, b) => s + b.quantity, 0)
   const totalDemand = markets.reduce((s, m) => s + m.demand, 0)
-  const avgShelfLife =
-    batches.length > 0
-      ? batches.reduce((s, b) => s + b.remaining_shelf_life_hours, 0) / batches.length
-      : 0
+  const avgShelfLife = batches.length > 0 ? batches.reduce((s, b) => s + b.remaining_shelf_life_hours, 0) / batches.length : 0
   const atRiskCount = batches.filter((b) => b.remaining_shelf_life_hours < 24).length
-
-  // Build Plotly traces
-  const farmTrace = {
-    x: farms.map((f) => f.location_x),
-    y: farms.map((f) => f.location_y),
-    mode: 'markers',
-    type: 'scatter' as const,
-    name: 'Farms',
-    marker: { symbol: 'triangle-up', size: 10, color: '#22c55e' },
-    text: farms.map((f) => `${f.farm_id}<br>Supply: ${fmt(f.available_quantity)} kg`),
-    hoverinfo: 'text' as const,
-  }
-
-  const storageTrace = {
-    x: storage.map((s) => s.location_x),
-    y: storage.map((s) => s.location_y),
-    mode: 'markers',
-    type: 'scatter' as const,
-    name: 'Storage',
-    marker: { symbol: 'square', size: 9, color: '#3b82f6' },
-    text: storage.map(
-      (s) => `${s.storage_id}<br>Load: ${fmt(s.current_load)}/${fmt(s.capacity)}`
-    ),
-    hoverinfo: 'text' as const,
-  }
-
-  const marketTrace = {
-    x: markets.map((m) => m.location_x),
-    y: markets.map((m) => m.location_y),
-    mode: 'markers',
-    type: 'scatter' as const,
-    name: 'Markets',
-    marker: { symbol: 'circle', size: 10, color: '#f59e0b' },
-    text: markets.map((m) => `${m.market_id}<br>Demand: ${fmt(m.demand)} kg`),
-    hoverinfo: 'text' as const,
-  }
-
-  // Build a lookup map for node coordinates
-  const nodeCoords: Record<string, { x: number; y: number }> = {}
-  farms.forEach((f) => { nodeCoords[f.farm_id] = { x: f.location_x, y: f.location_y } })
-  storage.forEach((s) => { nodeCoords[s.storage_id] = { x: s.location_x, y: s.location_y } })
-  markets.forEach((m) => { nodeCoords[m.market_id] = { x: m.location_x, y: m.location_y } })
-
-  // Route lines — one trace per route to allow coloring
-  const routeTraces = routes.map((r) => {
-    const src = nodeCoords[r.source]
-    const dst = nodeCoords[r.destination]
-    if (!src || !dst) return null
-    return {
-      x: [src.x, dst.x, null],
-      y: [src.y, dst.y, null],
-      mode: 'lines',
-      type: 'scatter' as const,
-      showlegend: false,
-      hoverinfo: 'skip' as const,
-      line: {
-        color: r.available ? '#253428' : '#ef4444',
-        width: r.available ? 1 : 1.5,
-      },
-    }
-  }).filter(Boolean) as any[]
-
-  const plotData = [...routeTraces, farmTrace, storageTrace, marketTrace]
-
-  const plotLayout = {
-    ...PLOTLY_LAYOUT_BASE,
-    height: 400,
-    legend: {
-      ...PLOTLY_LAYOUT_BASE.legend,
-      orientation: 'h' as const,
-      x: 0,
-      y: -0.08,
-      font: { color: '#6b8c70', size: 11 },
-    },
-    xaxis: {
-      ...PLOTLY_LAYOUT_BASE.xaxis,
-      title: { text: 'X Coordinate', font: { color: '#3d5240', size: 10 } },
-    },
-    yaxis: {
-      ...PLOTLY_LAYOUT_BASE.yaxis,
-      title: { text: 'Y Coordinate', font: { color: '#3d5240', size: 10 } },
-    },
-  }
-
-  function batchStatus(b: Batch): { label: string; status: 'bad' | 'warn' | 'good' } {
-    if (b.remaining_shelf_life_hours < 24) return { label: 'Urgent', status: 'bad' }
-    if (b.remaining_shelf_life_hours < 48) return { label: 'Ship Soon', status: 'warn' }
-    return { label: 'Fresh', status: 'good' }
-  }
 
   if (!state) {
     return (
@@ -153,16 +88,8 @@ export default function DashboardPage() {
 
       {/* Metrics row */}
       <div className="grid grid-cols-4 gap-4">
-        <MetricCard
-          label="Total Supply"
-          value={fmt(totalSupply)}
-          unit="kg across all batches"
-        />
-        <MetricCard
-          label="Total Demand"
-          value={fmt(totalDemand)}
-          unit="kg across all markets"
-        />
+        <MetricCard label="Total Supply" value={fmt(totalSupply)} unit="kg across all batches" />
+        <MetricCard label="Total Demand" value={fmt(totalDemand)} unit="kg across all markets" />
         <MetricCard
           label="Avg Shelf Life"
           value={`${Math.round(avgShelfLife)}h`}
@@ -177,40 +104,120 @@ export default function DashboardPage() {
         />
       </div>
 
-      {/* Network map */}
+      {/* Live Weather Panel */}
+      <div className="bg-[var(--surface)] border border-[var(--border)] rounded-md p-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="text-xs font-semibold uppercase tracking-wider text-[var(--text-3)]">Live Weather</div>
+            <div className="text-xs text-[var(--text-3)] mt-0.5">Open-Meteo · India network nodes</div>
+          </div>
+          <button
+            onClick={fetchWeather}
+            disabled={weatherLoading}
+            className="h-7 px-3 text-xs font-semibold border border-[var(--border-2)] text-[var(--text-2)] rounded hover:border-[var(--accent)] hover:text-[var(--accent)] transition-colors duration-150 disabled:opacity-40"
+          >
+            {weatherLoading ? 'Fetching...' : '↻ Refresh'}
+          </button>
+        </div>
+
+        {weatherError && <div className="text-xs text-red-400">{weatherError}</div>}
+
+        {weatherRisk && (
+          <>
+            {weatherRisk.any_heat_risk && (
+              <div className="flex items-center justify-between bg-amber-950/40 border border-amber-800/50 rounded px-3 py-2">
+                <div>
+                  <div className="text-xs font-semibold text-amber-400">⚠ Heat Alert Detected</div>
+                  <div className="text-xs text-amber-200/70 mt-0.5">
+                    {weatherRisk.auto_disruption_suggested
+                      ? `Temperatures exceed 36°C — disruption recommended (+${weatherRisk.suggested_delta_temp.toFixed(0)}°C above threshold)`
+                      : 'Elevated temperatures may accelerate spoilage'}
+                  </div>
+                </div>
+                {weatherRisk.auto_disruption_suggested && (
+                  <button
+                    onClick={applyWeatherDisruption}
+                    disabled={weatherApplying}
+                    className="shrink-0 h-7 px-3 text-xs font-semibold bg-amber-600 hover:bg-amber-500 text-black rounded transition-colors duration-150 disabled:opacity-40 ml-4"
+                  >
+                    {weatherApplying ? 'Applying...' : 'Auto-Disrupt'}
+                  </button>
+                )}
+              </div>
+            )}
+
+            <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+              {weatherRisk.nodes.map((n: NodeWeather) => (
+                <div
+                  key={n.node_id}
+                  className={`rounded px-3 py-2 border text-xs ${
+                    n.heat_risk
+                      ? 'bg-amber-950/30 border-amber-800/40'
+                      : 'bg-[var(--surface-2)] border-[var(--border)]'
+                  }`}
+                >
+                  <div className="flex items-center gap-1.5 mb-0.5">
+                    <span
+                      className={`w-2 h-2 rounded-full inline-block ${
+                        n.node_type === 'farm'
+                          ? 'bg-green-400'
+                          : n.node_type === 'storage'
+                          ? 'bg-blue-400'
+                          : 'bg-amber-400'
+                      }`}
+                    />
+                    <span className="font-mono text-[var(--text)] font-semibold">{n.node_id}</span>
+                    {n.heat_risk && <span className="text-amber-400 text-[10px]">🔥</span>}
+                  </div>
+                  <div className="text-[var(--text-2)] truncate">{n.city}</div>
+                  <div className={`font-mono font-semibold mt-0.5 ${n.heat_risk ? 'text-amber-400' : 'text-[var(--text)]'}`}>
+                    {n.current_temp_c.toFixed(1)}°C
+                  </div>
+                  <div className="text-[var(--text-3)] text-[10px]">max {n.max_24h_temp_c.toFixed(1)}°C</div>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex gap-4 text-[10px] text-[var(--text-3)]">
+              <span><span className="inline-block w-2 h-2 rounded-full bg-green-400 mr-1" />Farm</span>
+              <span><span className="inline-block w-2 h-2 rounded-full bg-blue-400 mr-1" />Storage</span>
+              <span><span className="inline-block w-2 h-2 rounded-full bg-amber-400 mr-1" />Market</span>
+              <span className="ml-auto">🔥 = heat risk (&gt;32°C)</span>
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* Network Map */}
       <div>
         <div className="text-xs font-semibold uppercase tracking-wider text-[var(--text-3)] mb-3">
-          Network
+          Network Map — India
         </div>
-        <div className="bg-[var(--surface)] border border-[var(--border)] rounded-md overflow-hidden">
-          <Plot
-            data={plotData}
-            layout={plotLayout}
-            config={{ displayModeBar: false, responsive: true }}
-            style={{ width: '100%' }}
-          />
+        <div className="border border-[var(--border)] rounded-md overflow-hidden">
+          <NetworkMap state={state} weather={weatherRisk?.nodes} height="440px" />
+        </div>
+        <div className="mt-1.5 flex gap-4 text-[10px] text-[var(--text-3)]">
+          <span><span className="inline-block w-2 h-2 rounded-full bg-green-400 mr-1" />Farm</span>
+          <span><span className="inline-block w-2 h-2 rounded-full bg-blue-400 mr-1" />Storage</span>
+          <span><span className="inline-block w-2 h-2 rounded-full bg-amber-400 mr-1" />Market</span>
+          <span><span className="inline-block w-3 h-0.5 bg-green-600 mr-1 align-middle" />Active route</span>
+          <span><span className="inline-block w-3 h-0.5 bg-red-500 mr-1 align-middle" />Offline route</span>
+          <span className="ml-auto">Click markers for details</span>
         </div>
       </div>
 
       {/* Batches table */}
       <div>
-        <div className="text-xs font-semibold uppercase tracking-wider text-[var(--text-3)] mb-3">
-          Batches
-        </div>
+        <div className="text-xs font-semibold uppercase tracking-wider text-[var(--text-3)] mb-3">Batches</div>
         <div className="bg-[var(--surface)] border border-[var(--border)] rounded-md overflow-hidden">
           <table className="w-full text-sm">
             <thead>
               <tr>
-                {['Batch ID', 'Farm', 'Commodity', 'Qty (kg)', 'Shelf Life', 'Status'].map(
-                  (col) => (
-                    <th
-                      key={col}
-                      className="text-xs font-semibold uppercase tracking-wider text-[var(--text-3)] pb-2 border-b border-[var(--border)] text-left px-4 pt-3"
-                    >
-                      {col}
-                    </th>
-                  )
-                )}
+                {['Batch ID', 'Farm', 'Commodity', 'Qty (kg)', 'Shelf Life', 'Status'].map((col) => (
+                  <th key={col} className="text-xs font-semibold uppercase tracking-wider text-[var(--text-3)] pb-2 border-b border-[var(--border)] text-left px-4 pt-3">
+                    {col}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody>
@@ -218,130 +225,69 @@ export default function DashboardPage() {
                 const { label, status } = batchStatus(b)
                 return (
                   <tr key={b.batch_id}>
-                    <td className="py-2 px-4 border-b border-[var(--border)] text-[var(--text-2)] font-mono">
-                      {b.batch_id}
-                    </td>
-                    <td className="py-2 px-4 border-b border-[var(--border)] text-[var(--text-2)] font-mono">
-                      {b.farm_id}
-                    </td>
-                    <td className="py-2 px-4 border-b border-[var(--border)] text-[var(--text-2)] font-mono">
-                      {b.commodity}
-                    </td>
-                    <td className="py-2 px-4 border-b border-[var(--border)] text-[var(--text-2)] font-mono">
-                      {fmt(b.quantity)}
-                    </td>
-                    <td className="py-2 px-4 border-b border-[var(--border)] text-[var(--text-2)] font-mono">
-                      {Math.round(b.remaining_shelf_life_hours)}h
-                    </td>
-                    <td className="py-2 px-4 border-b border-[var(--border)]">
-                      <StatusBadge status={status}>{label}</StatusBadge>
-                    </td>
+                    <td className="py-2 px-4 border-b border-[var(--border)] text-[var(--text-2)] font-mono">{b.batch_id}</td>
+                    <td className="py-2 px-4 border-b border-[var(--border)] text-[var(--text-2)] font-mono">{b.farm_id}</td>
+                    <td className="py-2 px-4 border-b border-[var(--border)] text-[var(--text-2)] font-mono">{b.commodity}</td>
+                    <td className="py-2 px-4 border-b border-[var(--border)] text-[var(--text-2)] font-mono">{fmt(b.quantity)}</td>
+                    <td className="py-2 px-4 border-b border-[var(--border)] text-[var(--text-2)] font-mono">{Math.round(b.remaining_shelf_life_hours)}h</td>
+                    <td className="py-2 px-4 border-b border-[var(--border)]"><StatusBadge status={status}>{label}</StatusBadge></td>
                   </tr>
                 )
               })}
               {batches.length === 0 && (
-                <tr>
-                  <td
-                    colSpan={6}
-                    className="py-6 px-4 text-center text-xs text-[var(--text-3)]"
-                  >
-                    No batches in current state
-                  </td>
-                </tr>
+                <tr><td colSpan={6} className="py-6 px-4 text-center text-xs text-[var(--text-3)]">No batches in current state</td></tr>
               )}
             </tbody>
           </table>
         </div>
       </div>
 
-      {/* Network setup: farms + markets */}
+      {/* Farms + Markets grid */}
       <div>
-        <div className="text-xs font-semibold uppercase tracking-wider text-[var(--text-3)] mb-3">
-          Network Setup
-        </div>
+        <div className="text-xs font-semibold uppercase tracking-wider text-[var(--text-3)] mb-3">Network Setup</div>
         <div className="grid grid-cols-2 gap-4">
-          {/* Farms */}
           <div className="bg-[var(--surface)] border border-[var(--border)] rounded-md overflow-hidden">
             <div className="px-4 pt-3 pb-2 border-b border-[var(--border)]">
-              <span className="text-xs font-semibold uppercase tracking-wider text-[var(--text-3)]">
-                Farms
-              </span>
+              <span className="text-xs font-semibold uppercase tracking-wider text-[var(--text-3)]">Farms</span>
             </div>
             <table className="w-full text-sm">
               <thead>
                 <tr>
-                  <th className="text-xs font-semibold uppercase tracking-wider text-[var(--text-3)] text-left px-4 pt-2 pb-2 border-b border-[var(--border)]">
-                    Farm ID
-                  </th>
-                  <th className="text-xs font-semibold uppercase tracking-wider text-[var(--text-3)] text-right px-4 pt-2 pb-2 border-b border-[var(--border)]">
-                    Available (kg)
-                  </th>
+                  <th className="text-xs font-semibold uppercase tracking-wider text-[var(--text-3)] text-left px-4 pt-2 pb-2 border-b border-[var(--border)]">Farm ID</th>
+                  <th className="text-xs font-semibold uppercase tracking-wider text-[var(--text-3)] text-right px-4 pt-2 pb-2 border-b border-[var(--border)]">Available (kg)</th>
                 </tr>
               </thead>
               <tbody>
                 {farms.map((f) => (
                   <tr key={f.farm_id}>
-                    <td className="py-2 px-4 border-b border-[var(--border)] text-[var(--text-2)] font-mono">
-                      {f.farm_id}
-                    </td>
-                    <td className="py-2 px-4 border-b border-[var(--border)] text-[var(--text-2)] font-mono text-right">
-                      {fmt(f.available_quantity)}
-                    </td>
+                    <td className="py-2 px-4 border-b border-[var(--border)] text-[var(--text-2)] font-mono">{f.farm_id}</td>
+                    <td className="py-2 px-4 border-b border-[var(--border)] text-[var(--text-2)] font-mono text-right">{fmt(f.available_quantity)}</td>
                   </tr>
                 ))}
-                {farms.length === 0 && (
-                  <tr>
-                    <td
-                      colSpan={2}
-                      className="py-4 px-4 text-center text-xs text-[var(--text-3)]"
-                    >
-                      No farms
-                    </td>
-                  </tr>
-                )}
+                {farms.length === 0 && <tr><td colSpan={2} className="py-4 px-4 text-center text-xs text-[var(--text-3)]">No farms</td></tr>}
               </tbody>
             </table>
           </div>
 
-          {/* Markets */}
           <div className="bg-[var(--surface)] border border-[var(--border)] rounded-md overflow-hidden">
             <div className="px-4 pt-3 pb-2 border-b border-[var(--border)]">
-              <span className="text-xs font-semibold uppercase tracking-wider text-[var(--text-3)]">
-                Markets
-              </span>
+              <span className="text-xs font-semibold uppercase tracking-wider text-[var(--text-3)]">Markets</span>
             </div>
             <table className="w-full text-sm">
               <thead>
                 <tr>
-                  <th className="text-xs font-semibold uppercase tracking-wider text-[var(--text-3)] text-left px-4 pt-2 pb-2 border-b border-[var(--border)]">
-                    Market ID
-                  </th>
-                  <th className="text-xs font-semibold uppercase tracking-wider text-[var(--text-3)] text-right px-4 pt-2 pb-2 border-b border-[var(--border)]">
-                    Demand (kg)
-                  </th>
+                  <th className="text-xs font-semibold uppercase tracking-wider text-[var(--text-3)] text-left px-4 pt-2 pb-2 border-b border-[var(--border)]">Market ID</th>
+                  <th className="text-xs font-semibold uppercase tracking-wider text-[var(--text-3)] text-right px-4 pt-2 pb-2 border-b border-[var(--border)]">Demand (kg)</th>
                 </tr>
               </thead>
               <tbody>
                 {markets.map((m) => (
                   <tr key={m.market_id}>
-                    <td className="py-2 px-4 border-b border-[var(--border)] text-[var(--text-2)] font-mono">
-                      {m.market_id}
-                    </td>
-                    <td className="py-2 px-4 border-b border-[var(--border)] text-[var(--text-2)] font-mono text-right">
-                      {fmt(m.demand)}
-                    </td>
+                    <td className="py-2 px-4 border-b border-[var(--border)] text-[var(--text-2)] font-mono">{m.market_id}</td>
+                    <td className="py-2 px-4 border-b border-[var(--border)] text-[var(--text-2)] font-mono text-right">{fmt(m.demand)}</td>
                   </tr>
                 ))}
-                {markets.length === 0 && (
-                  <tr>
-                    <td
-                      colSpan={2}
-                      className="py-4 px-4 text-center text-xs text-[var(--text-3)]"
-                    >
-                      No markets
-                    </td>
-                  </tr>
-                )}
+                {markets.length === 0 && <tr><td colSpan={2} className="py-4 px-4 text-center text-xs text-[var(--text-3)]">No markets</td></tr>}
               </tbody>
             </table>
           </div>
