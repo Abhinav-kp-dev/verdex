@@ -101,7 +101,7 @@ export default function ChatBot() {
       {/* Floating button */}
       <button
         onClick={() => setOpen(o => !o)}
-        className="fixed bottom-5 right-5 z-50 w-12 h-12 rounded-full flex items-center justify-center shadow-lg transition-all duration-200 hover:scale-105"
+        className="fixed bottom-5 right-5 z-[9999] w-12 h-12 rounded-full flex items-center justify-center shadow-lg transition-all duration-200 hover:scale-105"
         style={{
           background: open ? 'var(--surface-2)' : 'var(--accent)',
           border: '1px solid var(--border-2)',
@@ -115,7 +115,7 @@ export default function ChatBot() {
       {/* Chat panel */}
       {open && (
         <div
-          className="fixed bottom-20 right-5 z-50 w-80 flex flex-col rounded-xl shadow-2xl overflow-hidden"
+          className="fixed bottom-20 right-5 z-[9999] w-80 flex flex-col rounded-xl shadow-2xl overflow-hidden"
           style={{
             height: '480px',
             background: 'var(--surface)',
