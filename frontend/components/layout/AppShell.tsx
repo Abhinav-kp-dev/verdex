@@ -13,6 +13,7 @@ const navItems = [
   { href: '/reoptimize', label: 'Re-Optimize' },
   { href: '/results', label: 'Results & Reports' },
   { href: '/carbon', label: 'Carbon Emissions' },
+  { href: '/markdown', label: 'Markdown Pricing' },
   { href: '/research', label: 'Research Mode' },
 ]
 

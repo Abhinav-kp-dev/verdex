@@ -7,6 +7,13 @@ import type {
   ReoptimizeOut,
 } from './types'
 
+export interface MarkdownEntry {
+  batchId: string
+  discount: number
+  scenario: 'fixed' | 'elastic'
+  appliedAt: string
+}
+
 export interface AttemptLogEntry {
   attempt: number
   label: string
@@ -28,6 +35,7 @@ interface AppState {
   disruptionDesc: string
   reoptimizeResult: ReoptimizeOut | null
   attemptLog: AttemptLogEntry[]
+  markdownConfig: Record<string, MarkdownEntry>
 
   setNumBatches(n: number): void
   setSeed(s: number): void
@@ -37,6 +45,8 @@ interface AppState {
   setDisruptedState(s: SupplyChainState, desc: string): void
   setReoptimizeResult(r: ReoptimizeOut): void
   addAttempt(e: AttemptLogEntry): void
+  applyMarkdown(entry: MarkdownEntry): void
+  clearMarkdowns(): void
   reset(): void
 }
 
@@ -55,6 +65,7 @@ const defaultState: Omit<AppState, keyof {
   disruptionDesc: '',
   reoptimizeResult: null,
   attemptLog: [],
+  markdownConfig: {},
 }
 
 export const useStore = create<AppState>()((set) => ({
@@ -70,5 +81,8 @@ export const useStore = create<AppState>()((set) => ({
   setDisruptedState: (s, desc) => set({ disruptedState: s, disruptionDesc: desc }),
   setReoptimizeResult: (r) => set({ reoptimizeResult: r }),
   addAttempt: (e) => set((prev) => ({ attemptLog: [...prev.attemptLog, e] })),
+  applyMarkdown: (entry) =>
+    set((prev) => ({ markdownConfig: { ...prev.markdownConfig, [entry.batchId]: entry } })),
+  clearMarkdowns: () => set({ markdownConfig: {} }),
   reset: () => set({ ...defaultState }),
 }))
