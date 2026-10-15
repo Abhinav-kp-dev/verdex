@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { useStore } from '@/lib/store'
 import ChatBot from '@/components/ui/ChatBot'
+import StepProgress from '@/components/layout/StepProgress'
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard' },
@@ -135,6 +136,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
       {/* Main content */}
       <main className="ml-60 flex-1 min-h-screen" style={{ background: 'var(--bg)' }}>
+        <StepProgress />
         {children}
       </main>
 
