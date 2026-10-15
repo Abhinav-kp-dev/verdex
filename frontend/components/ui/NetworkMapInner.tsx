@@ -28,7 +28,7 @@ export default function NetworkMapInner({ state, weather, height = '420px' }: Pr
 
       // Destroy previous map if re-mounting
       if (mapRef.current) {
-        mapRef.current.remove()
+        try { mapRef.current.stop(); mapRef.current.remove() } catch (_) {}
         mapRef.current = null
       }
 
@@ -45,6 +45,9 @@ export default function NetworkMapInner({ state, weather, height = '420px' }: Pr
         zoom: 6,
         zoomControl: true,
         attributionControl: false,
+        zoomAnimation: false,
+        fadeAnimation: false,
+        markerZoomAnimation: false,
       })
       mapRef.current = map
 
@@ -166,8 +169,13 @@ export default function NetworkMapInner({ state, weather, height = '420px' }: Pr
     })
 
     return () => {
-      if (mapRef.current) {
-        mapRef.current.remove()
+      try {
+        if (mapRef.current) {
+          mapRef.current.stop()
+          mapRef.current.remove()
+          mapRef.current = null
+        }
+      } catch (_) {
         mapRef.current = null
       }
     }
