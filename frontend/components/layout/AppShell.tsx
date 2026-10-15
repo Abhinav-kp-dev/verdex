@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { useStore } from '@/lib/store'
+import ChatBot from '@/components/ui/ChatBot'
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard' },
@@ -133,6 +134,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       <main className="ml-60 flex-1 min-h-screen" style={{ background: 'var(--bg)' }}>
         {children}
       </main>
+
+      {/* Floating chatbot — visible on all pages */}
+      <ChatBot />
     </div>
   )
 }
