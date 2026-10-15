@@ -8,6 +8,8 @@ import ChatBot from '@/components/ui/ChatBot'
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard' },
+  { href: '/inventory', label: 'Produce Inventory' },
+  { href: '/destinations', label: 'Destinations & Demand' },
   { href: '/plan', label: 'Plan Delivery' },
   { href: '/simulate', label: 'Simulate Disruption' },
   { href: '/reoptimize', label: 'Re-Optimize' },
